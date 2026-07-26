@@ -101,9 +101,7 @@ public class GameEvent {
     }
 
     // --- Static object creation factory (calls constructor above) ---
-    public static GameEvent from(
-            GameEventRequest request,
-            Instant receivedAt) {
+    public static GameEvent from(GameEventRequest request, Instant receivedAt) {
 
         return new GameEvent(
                 request.type(),
