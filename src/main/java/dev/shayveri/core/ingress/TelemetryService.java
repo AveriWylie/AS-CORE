@@ -48,11 +48,11 @@ public class TelemetryService {
 	private final RealtimePublisher RP;
 	private final Executor EX;
 
-	public TelemetryService(ts, rp, ex) {
+	public TelemetryService(TelemetryStore TS, RealtimePublisher RP, Executor EX) {
 
-		this.TS = ts;
-		this .RP = rp;
-		this.EX = ex;
+		this.TS = TS;
+		this .RP = RP;
+		this.EX = EX;
 
 	}
 
@@ -60,10 +60,11 @@ public class TelemetryService {
 
 		Instant recievedAt = Instant.now();
 		TelemetrySnapshot snapshot = TelemetrySnapshot.from(request, recievedAt);
-		ex.exuecute(() -> {
-			store.saveSnapshot(snapshot),
-			publisher.publish("/topic/telemetry/" + snapshot.getPlaceId(), snapshot)
-		})
+
+		EX.execute(() -> {
+			TS.saveSnapshot(snapshot);
+			RP.publish("/topic/telemetry/" + snapshot.getPlaceId(), snapshot);
+		});
 
 	}
 

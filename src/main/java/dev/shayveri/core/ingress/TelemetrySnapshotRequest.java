@@ -79,6 +79,6 @@ public record TelemetrySnapshotRequest(
 	// difference in indentation is conventional for looks above
 	// as its too long for horizontal we list them not at code
 	public TelemetrySnapshotRequest {
-		costomMterics = costomMetrics == null ? Map.of() : costomMetrics;
+		customMetrics = customMetrics == null ? Map.of() : customMetrics;
 	}
 }

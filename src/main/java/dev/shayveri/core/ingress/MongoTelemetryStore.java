@@ -41,13 +41,9 @@ public class MongoTelemetryStore implements TelemetryStore {
 	}
 
 	@Override
-	public void saveSnapshot(TelemetrySnapshot snapshot) {
-		SR.save(snapshot);
-	}
+	public void saveSnapshot(TelemetrySnapshot snapshot) {SR.save(snapshot);}
 
 	@Override
-	public void saveEvents(List,GameEvent> events) {
-		ER.save(events);
-	}
+	public void saveEvents(List<GameEvent> events) {ER.saveAll(events);}
 
 }

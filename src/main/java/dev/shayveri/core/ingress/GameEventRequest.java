@@ -66,4 +66,6 @@ public record GameEventRequest(
 		data = data == null ? Map.of() : data;
 	}
 
-	public record Position(double x, double y, double z) { } }
+	public record Position(double x, double y, double z) { }
+
+}

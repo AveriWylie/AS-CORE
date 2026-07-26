@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Map;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 /**
  * A3 - telemtery snap shot, wrapped as an object of post shape with added
@@ -72,11 +73,11 @@ public class TelemetrySnapshot {
     // --- fields ---
     @Id private String id;
     private String placeId;
-    private String jobId;.
+    private String jobId;
     private Integer playerCount;
     private Double serverFps;
-    private String Round;
-    private Map,String, Object> customMetrics;
+    private String round;
+    private Map<String, Object> customMetrics;
     // tells MongoDB to create an index on that field and automatically
     // delete old documents.
     @Indexed(expireAfter = "7d") private Instant receivedAt;
@@ -119,35 +120,20 @@ public class TelemetrySnapshot {
     }
 
     // --- getters (no setters per security model) ---
-    public String getId() {
-        return Id;
-    }
+    public String getId() {return id;}
 
-    public String getPlaceId() {
-        return placeId;
-    }
+    public String getPlaceId() {return placeId;}
 
-    public String getJobId() {
-        return jobId;
-    }
+    public String getJobId() {return jobId;}
 
-    public Integer getPlayerCount() {
-        return playerCount;
-    }
+    public Integer getPlayerCount() {return playerCount;}
 
-    public Double getServerFps() {
-        return serverFps;
-    }
+    public Double getServerFps() {return serverFps;}
 
-    public String getRound() {
-        return Round
-    }
+    public String getRound() {return round;}
 
-    public Instant getRecievedAt() {
-        return recievedAt
-    }
+    public Instant getReceivedAt() {return receivedAt;}
 
-    public Map<String, Object> getCustomMetrics() {
-        return Map.copyOf(customMetrics);
-    }
+    public Map<String, Object> getCustomMetrics() {return Map.copyOf(customMetrics);}
+
 }
