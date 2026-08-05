@@ -1,20 +1,11 @@
 package dev.shayveri.core.ingress;
 
-import java.util.List;
-
-import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-
 import java.util.List;
 
 /**
@@ -38,8 +29,8 @@ import java.util.List;
  *   ResponseEntity.accepted().build() - the 202 with empty body.
  *
  * SECURITY (lives OUTSIDE this class, per the security architecture): the
- * role rule is one line in SecurityConfig - see the TODO there. Nothing in
- * this file checks identity, ever.
+ * role rule is one line in SecurityConfig - see the TODO
+ * Nothing in this file checks identity, ever.
  *
  * TODO(averi):
  *   1. private final TelemetryService field + constructor.
@@ -50,15 +41,23 @@ import java.util.List;
  *   3. POST /api/telemetry/events: method taking
  *          @RequestBody List<@Valid GameEventRequest> events
  *      body: delegate + same 202.
- *   4. The SecurityConfig line (see TODO there), so only ROBLOX passes.
+ *   4. The SecurityConfig line (see below), so only ROBLOX passes.
  *
  * Done when: D1 (web layer) and D2 go green - valid body + ROBLOX key ->
  * 202; missing field -> 400 naming it; DASH/NODE key -> rejected.
+ *
+ * git add TelemetryController.java src/main/java/dev/shayveri/core/ingress/
+ *
+ * git status
  */
 @RestController
 @Validated
 public class TelemetryController {
 
-	// TODO(averi): step 1, then add the two endpoint methods (steps 2-3).
+	private final TelemetryService ts;
+
+	public TelemetryController (TelemetryService ts) {
+		this.ts = ts;
+	}
 
 }
