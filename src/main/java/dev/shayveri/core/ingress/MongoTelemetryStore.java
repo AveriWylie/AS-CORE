@@ -1,8 +1,8 @@
 package dev.shayveri.core.ingress;
 
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-import java.util.List;
 
 /**
  * A6 - the Mongo adapter behind the A5 seam. The only class in the module
@@ -27,23 +27,30 @@ import java.util.List;
  * a batch of 3 events becomes 3 documents in game_events.
  */
 
+/*
+ * matchIfMissing = true keeps Mongo the DEFAULT. Both this and
+ * AsdbTelemetryStore implement TelemetryStore, so exactly one must be active or
+ * Spring fails to start with an ambiguous-bean error. Setting
+ * shayveri.store=asdb switches; anything else, including the property being
+ * absent entirely, leaves this one in place. That ordering matters: a
+ * deployment that has never heard of asdb must keep working untouched.
+ */
 @Component
+@ConditionalOnProperty(name = "shayveri.store", havingValue = "mongo", matchIfMissing = true)
 public class MongoTelemetryStore implements TelemetryStore {
 
-	private final TelemetrySnapshotRepository SR;
-	private final GameEventRepository ER;
+	private final TelemetrySnapshotRepository sr;
+	private final GameEventRepository er;
 
-	public MongoTelemetryStore(TelemetrySnapshotRepository SR, GameEventRepository ER) {
-
-		this.SR = SR;
-		this.ER = ER;
-
+	public MongoTelemetryStore(TelemetrySnapshotRepository sr, GameEventRepository er) {
+		this.sr = sr;
+		this.er = er;
 	}
 
 	@Override
-	public void saveSnapshot(TelemetrySnapshot snapshot) {SR.save(snapshot);}
+	public void saveSnapshot(TelemetrySnapshot snapshot) {sr.save(snapshot);}
 
 	@Override
-	public void saveEvents(List<GameEvent> events) {ER.saveAll(events);}
+	public void saveEvents(List<GameEvent> events) {er.saveAll(events);}
 
 }
