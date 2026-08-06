@@ -1,0 +1,447 @@
+ASDB ADAPTER BLUEPRINT - SWAPPING MONGO FOR ASDB
+==================================================
+Not a numbered module. This is the v2 storage swap named in plan.txt's
+deferred ideas, promoted to a construction document. Same contract as the
+module blueprints: units, responsibilities, surfaces, consumed APIs, proof.
+
+STATUS: BUILT. This document was written as a plan and has been rewritten
+as a record. Sections marked DECIDED were open questions that the
+implementation answered, sometimes differently from the original
+recommendation. Where the plan and the built thing disagree, the
+disagreement is written down rather than edited out, because the reasons
+are the useful part.
+
+asdb is the custom database (Rust, zero external crates) at CS/Rust/asdb-live,
+a clone of github.com/shahyaranfaz/asdb. Its query language is ASL,
+specified in asl.txt in that repo. Note the location change: the earlier
+CS/Rust/asdb-master was a ZIP extraction with no git history and is stale.
+
+Definition of done: TelemetryStore is backed by asdb instead of MongoDB.
+The telemetry ingress path (Module 1) writes snapshots and events to asdb,
+with no change to TelemetryService, TelemetryController, or any other
+module. Mongo is removed from that slot only.
+
+WHY THIS WAS CHEAP ON THE JAVA SIDE:
+Development rule 5 (storage behind interfaces) was written for exactly this,
+and it held. TelemetryStore is the seam. TelemetryService depends on the
+INTERFACE and has never named MongoTelemetryStore. Confirmed by the diff:
+TelemetryService, TelemetryController, TelemetrySnapshot and GameEvent are
+all UNMODIFIED by this work. The only pre-existing file touched is
+MongoTelemetryStore, and only to add a conditional so the two
+implementations can coexist.
+
+----------------------------------------------------------------------
+A. PREREQUISITES - asdb-side work that gated everything here
+----------------------------------------------------------------------
+All four have landed. Kept for the record, since the ordering explains why
+the Java side could not be finished first.
+
+P1. asdb must compile.                                          DONE
+    buffer_pool.rs called self.disk.free_page(page_id), which did not exist
+    on DiskManager. Resolved with an in-memory LIFO free list, placed there
+    rather than persisted because DiskManager sits BELOW Catalog in the
+    layering and page 0 already belongs to the catalog.
+
+P2. Phase 5 - the query engine.                                 DONE
+    Split in practice. The binder and the expression evaluator turned out
+    to be already written upstream (see the note in I). The planner and
+    executor were empty and were built: SeqScan, IndexScan, Filter,
+    Projection, Drop, Sort, Limit, Offset, HashAggregate, HashJoin, Insert,
+    Update, Delete, plus the physical plan types and the index-pushdown
+    rule.
+
+P3. Server mode.                                                DONE
+    Was listed OUT OF SCOPE v1 in plans.txt. Built as an HTTP front end,
+    see Q1. This was the single hardest blocker: without it a JVM process
+    could not reach asdb at all, since it was an embedded Rust library.
+
+P4. ASL v0.2 parser revision.                                   DONE
+    Separator-optional stages. The plan called this "not strictly
+    blocking". That turned out to be WRONG, and the reason is recorded in
+    Q6: the backtick escape that ships with v0.2 is required by the mapper,
+    not optional.
+
+----------------------------------------------------------------------
+B. ANNOTATION STRATEGY
+----------------------------------------------------------------------
+THE FACT THAT MAKES THE SWAP POSSIBLE (unchanged, and worth restating):
+MongoDB never sees a Java annotation. @Document is a mapping instruction to
+the JAVA FRAMEWORK, read by Spring Data via reflection at runtime and
+translated into wire-protocol operations. The Mongo server receives BSON
+over TCP and has no concept of Java, classes, or annotations. (The
+four-actor handoff in java-structure-gradle-specific.txt 1a: Gradle
+fetches, JVM loads, Spring auto-configures, Spring invokes.)
+
+Because the annotation is a Java-side label rather than something the
+database consumes, an adapter can read the same annotations and emit ASL
+instead of BSON.
+
+WHERE THE ANNOTATIONS COME FROM:
+  @Id       org.springframework.data.annotation.Id
+            Spring Data COMMONS - storage-neutral, shared by every Spring
+            Data module (JPA, Redis, Cassandra, Mongo).
+  @Document org.springframework.data.mongodb.core.mapping.Document
+            Spring Data MONGO.
+  @Indexed  org.springframework.data.mongodb.core.index.Indexed
+            Spring Data MONGO.
+
+DECIDED: OPTION (a), NOT OPTION (b). THE PLAN WAS REVERSED.
+
+This document originally chose option (b): define our own @AsdbDocument and
+@AsdbIndexed, keep the neutral @Id, and change one import per entity class.
+It dismissed option (a), reading Spring's Mongo annotations directly, as
+something that "works, reads as an accident".
+
+What was built is option (a). The entity classes are untouched and
+AsdbEntityMapper reads Spring's own @Document, @Id and @Indexed by
+reflection.
+
+THE ARGUMENT THAT FORCED IT, which the plan did not anticipate:
+
+Both stores have to COEXIST. The switch between Mongo and asdb is a runtime
+property (@ConditionalOnProperty, see D5), not a compile-time deletion.
+That means a single deployed jar contains both implementations and picks
+one at startup.
+
+If the entities carried @AsdbDocument instead of @Document, the Mongo path
+would stop working, because Spring Data Mongo reads @Document and nothing
+else. Option (b) is only coherent if Mongo is being DELETED, not switched.
+Keeping the ability to switch back is worth more than the tidiness of
+owning the annotation, especially while asdb is this young: the fallback is
+the entire safety net.
+
+So the annotations on the entities have to be the ones BOTH backends can
+read, which means Spring's. Cost of that choice, stated plainly:
+spring-boot-starter-data-mongodb stays on the classpath even in an
+asdb-only deployment, purely to supply annotation classes. That is the
+accident the plan objected to, and it is a fair objection. It is simply
+cheaper than the alternative right now.
+
+REVISIT THIS IF Mongo is ever removed outright. At that point option (b)
+becomes correct and the change is one import per entity, exactly as
+originally costed.
+
+----------------------------------------------------------------------
+C. UNITS - package dev.shayveri.core.ingress.asdb
+----------------------------------------------------------------------
+Note the package: ingress.asdb, not the planned core.asdb. It sits beside
+the interface it implements rather than in a parallel tree, which keeps
+TelemetryStore and both of its implementations readable together.
+
+D1. AsdbDocument                    DROPPED
+D2. AsdbIndexed                     DROPPED
+    Both were consequences of option (b). See B.
+
+D3. AsdbEntityMapper                BUILT (static, framework-free)
+    The heart of the adapter. Entity object -> ASL document literal.
+      collectionOf(Class) -> String
+          Reads @Document, honouring both @Document("name") and
+          @Document(collection = "name"), with Spring's own
+          uncapitalised-class-name fallback.
+      indexedFieldsOf(Class) -> List<String>
+          Fields carrying @Indexed, so the store can create indexes at
+          startup. Mongo builds these itself; asdb needs explicit DDL.
+      insertStatement(Object) / insertStatement(List<?>) -> String
+      documentLiteral(Object) -> String
+    Type mapping to asdb's Value tree (src/document/value.rs):
+          String  -> String, ESCAPED     Integer/Long/Short -> Int
+          Double  -> Float               Boolean            -> Bool
+          null    -> Null                Map                -> Document
+          List, array -> Array           Instant            -> Int, see Q3
+          anything else -> reflected over field by field, which is what
+                           makes nested types such as
+                           GameEventRequest.Position work with no special
+                           case
+    NOT BUILT: fromResultDocument, the reverse direction. Nothing in the
+    ingress path reads documents back, so it would have no caller. It needs
+    a JSON parser on the Java side, which is the moment to add one.
+    Consumes: java.lang.reflect, plus the two Spring annotation types for
+    reading only. No Spring context, no server: fully unit-testable.
+
+D4. AsdbClient                      BUILT
+      execute(String asl) -> String   (raw JSON response body)
+      isHealthy() -> boolean
+    Consumes: java.net.http.HttpClient, already in the JDK. NO NEW
+    DEPENDENCY, and no driver. That is the payoff of choosing HTTP in Q1.
+    Deliberately does NOT parse the response: the store only needs to know
+    whether the write succeeded, and a non-2xx status carries that. Adding
+    a parser to read a field with no consumer would be work for nobody.
+
+D5. AsdbTelemetryStore              BUILT (implements TelemetryStore)
+      saveSnapshot(TelemetrySnapshot)
+          emits: from telemtry_snapshots | insert { ... }
+      saveEvents(List<GameEvent>)
+          emits: from game_events | insert { ... }, { ... }
+                 one statement for the whole batch, one round trip, one
+                 acquisition of the server's mutex
+      ensureSchema()  at construction: creates collections and @Indexed
+          indexes. Mongo does both implicitly; asdb does neither.
+          Failures are logged, not thrown, because "already exists" is the
+          normal case on every restart after the first.
+    MongoTelemetryStore is NOT deleted. See Q5.
+    Note the emitted ASL keeps its pipes even though v0.2 makes them
+    optional. Generated statements end up in logs and error messages, and
+    an explicit separator makes the stage boundary obvious when reading a
+    failed insert. The optional separator is for humans writing queries by
+    hand.
+
+D6. AsdbProperties                  BUILT DIFFERENTLY
+    Done with @Value on the constructor rather than a
+    @ConfigurationProperties class:
+      shayveri.store.asdb.url                  default http://127.0.0.1:7070
+      shayveri.store.asdb.connect-timeout-ms   default 2000
+      shayveri.store.asdb.request-timeout-ms   default 5000
+    Three scalars with defaults did not justify a separate bound class. If
+    the surface grows, promote it to @ConfigurationProperties and match the
+    ApiKeyProperties pattern.
+
+D7. AslQueryBuilder                 NOT BUILT, and still correctly deferred
+    Not needed for Module 1, which only inserts. Wanted when JobStore or
+    ConfigStore move over and need generated finders.
+
+----------------------------------------------------------------------
+D. WHAT THE ADAPTER EMITS (ASL vs the Mongo equivalent)
+----------------------------------------------------------------------
+  save one document
+    Mongo   db.telemetry_snapshots.insertOne({ placeId: "8271", ... })
+    ASL     from telemtry_snapshots | insert { placeId: "8271", ... }
+
+  save a batch
+    Mongo   db.game_events.insertMany([ {...}, {...} ])
+    ASL     from game_events | insert {...}, {...}
+
+  filter and project
+    Mongo   db.jobs.find({ status: "QUEUED" }, { id: 1, mapId: 1 })
+    ASL     from jobs where status == "QUEUED" select id, mapId
+
+  membership
+    Mongo   db.jobs.find({ status: { $in: ["CLAIMED", "RUNNING"] } })
+    ASL     from jobs where status in ["CLAIMED", "RUNNING"]
+
+  count by group
+    Mongo   db.jobs.aggregate([
+              { $group: { _id: "$status", count: { $sum: 1 } } } ])
+    ASL     from jobs group status select status, count
+
+The structural difference worth internalizing: Mongo queries are DATA
+(JSON describing a query - serializes trivially, composes awkwardly, needs
+a different API shape per operation). ASL queries are LANGUAGE (text parsed
+into one uniform pipeline - reads better, needs a parser on both ends).
+That is why D3 emits strings and D4 sends text.
+
+It is also why section E exists. Text assembled from untrusted values is an
+injection surface in a way a BSON document is not. That cost belongs in the
+comparison alongside the readability benefit.
+
+----------------------------------------------------------------------
+E. INJECTION - the risk that comes with emitting a language
+----------------------------------------------------------------------
+NOT IN THE ORIGINAL PLAN. It should have been, and it is the most important
+thing in this document.
+
+Telemetry values arrive from Roblox game servers, which is to say from
+outside the trust boundary. Because the adapter builds ASL by concatenating
+those values into text, a hostile value can close the string it sits in and
+begin new syntax. Exactly the SQL injection shape:
+
+    placeId = x" } | delete //
+
+    from telemtry_snapshots | insert { placeId: "x" } | delete //", ... }
+                                                  ^^^^^^^^^^^^^^
+                                                  no longer data
+
+The fix is the standard one: escape at the single point where untrusted
+text becomes syntax, and nowhere else. AsdbEntityMapper.quote is that
+point, which is why it is package-private and why every caller goes through
+insertStatement rather than assembling strings itself.
+
+Escapes quote, backslash, newline, tab and carriage return, matching what
+asdb's lexer recognises. Any other control character is DROPPED, because
+the lexer has no escape for it and would otherwise see a raw byte inside a
+string literal.
+
+Verified against a live server: the payload above inserts as data, the
+document count stays 1, and nothing is deleted.
+
+SECOND INJECTION SURFACE, easy to miss: field NAMES, not just values.
+customMetrics is a Map<String, Object> populated from user JSON, so a key
+can be any string at all, including an ASL reserved word. See Q6.
+
+----------------------------------------------------------------------
+F. OPEN QUESTIONS - now answered
+----------------------------------------------------------------------
+Q1. Wire protocol shape.                              DECIDED: HTTP
+    Options were length-prefixed TCP frames or HTTP with ASL in the body.
+    HTTP wins on the thing that actually mattered: every language already
+    has a client, so the Java side needs no driver and no new dependency,
+    and a failing query can be reproduced with curl. TCP would be faster
+    and would have required writing and maintaining framing code on both
+    ends. Throughput is not the binding constraint (see Q7); being callable
+    at all was.
+    Implemented hand-written over std::net, since asdb has no dependencies.
+    Two endpoints: POST /query with an ASL body, GET /health.
+
+Q2. TTL has no asdb equivalent.               DECIDED: SERVER-SIDE SWEEPER
+    PARTIALLY RESOLVED, AND THE REMAINING GAP IS THE SHARPEST EDGE HERE.
+    asdb now ships a background sweeper that periodically runs, per policy:
+        from <collection> | where <field> < <cutoff> | delete
+    configured on the server command line:
+        asdb telemetry.db --ttl telemtry_snapshots.receivedAt=7d
+    It parses the Spring spelling directly ("7d", "30s") and REJECTS a bare
+    number rather than assuming a unit, because silently reading "7" as
+    seconds would expire data a hundred thousand times too early.
+    THE GAP: @Indexed(expireAfter = "7d") on TelemetrySnapshot.receivedAt
+    still compiles and still reads as though it means something, but on
+    asdb it is documentation. The flag is what enforces it. Omit the flag
+    and NOTHING FAILS, the collection simply grows forever. A missing index
+    is a slow query; a missing TTL is unbounded disk. Anyone deploying the
+    asdb path has to set the flag, and nothing in the Java build will
+    remind them.
+    Deferred improvement: have AsdbTelemetryStore read expireAfter by
+    reflection at startup and register the policy over the wire, so the
+    annotation is once again the single source of truth. That needs a DDL
+    verb in ASL for TTL policies, which does not exist yet.
+
+Q3. Instant / timestamp representation.    DECIDED: Int, epoch millis
+    As originally recommended, and the reasoning got stronger. A string
+    timestamp sorts lexically, which breaks the moment a format changes,
+    and cannot be range-scanned on a B-tree index. Epoch millis sorts
+    correctly, compares correctly, and is exactly what the Q2 sweeper's
+    `where receivedAt < cutoff` needs. Cost: the stored value is opaque
+    when reading a raw collection.
+
+Q4. Id type mismatch.                DECIDED: OMIT, DO NOT GENERATE
+    Neither option in the plan was taken. Mongo fills a null @Id with an
+    ObjectId; asdb has no such notion, so the mapper OMITS a null @Id
+    rather than fabricating one. Nothing in the ingress path reads ids
+    back, so inventing a UUID would add a field with no consumer and
+    disguise the difference between the two backends.
+    Entity @Id fields stay String and stay null on the asdb path.
+    If a read path later needs stable public ids, generate them in the
+    service layer where the choice is visible, not hidden inside a mapper.
+
+Q5. Which slot goes first.               DECIDED: TelemetryStore, both
+    The plan worried this conflicted with plan.txt's "start somewhere
+    low-risk" note. It does not, on inspection: telemetry snapshots carry a
+    7-day TTL and are disposable by design, which is the definition of low
+    risk. game_events is the permanent research dataset and IS the wrong
+    place to be brave, but it shares the same store interface, so it comes
+    along. Mitigated by coexistence: switching back is one property.
+
+Q6. Reserved words in map keys.        NEW, DECIDED: BACKTICK, NEEDS v0.2
+    Not in the original plan. customMetrics is a Map<String, Object> filled
+    from user JSON, so a metric key can be "order", which asdb's lexer
+    turns into a stage-keyword token before the parser ever sees it. The
+    insert then fails to parse.
+    ASL v0.2's backtick-quoted identifiers are the escape, and
+    AsdbEntityMapper.backtick applies them to any key that is not a plain
+    identifier OR is a reserved word. The reserved list is duplicated on
+    the Java side because there is no way to ask the server for it; a stale
+    entry only causes an unnecessary backtick, which is the safe direction
+    to be wrong in.
+    CONSEQUENCE: P4 is NOT optional, contrary to what section A originally
+    claimed. The adapter depends on v0.2. Observed directly: before the
+    merge, an insert with a key named `order` failed with
+    UnexpectedChar { ch: '`' }.
+
+Q7. Concurrency.                     NEW, ACCEPTED: ONE WRITER AT A TIME
+    The asdb server serializes every statement behind a single mutex, so
+    concurrent telemetry posts queue rather than run in parallel. This is
+    honest rather than a placeholder: Database methods take &mut self all
+    the way down, so the type system already said one caller at a time, and
+    serializing at the front door makes that explicit instead of pretending
+    otherwise.
+    Real concurrency needs page-level locking and a transaction manager in
+    the storage layer. Correct and slow is the right order to arrive in.
+    Bounded by Spring's connection pool in practice.
+
+Q8. Missing fields in comparisons.       NEW, DECIDED: SKIP, DO NOT ERROR
+    asdb originally treated `where age > 18` as an ERROR when a document
+    had no age field, which fails the WHOLE query rather than skipping the
+    document. That is wrong for a store that permits schemaless documents,
+    it breaks the Q2 sweeper the moment one document lacks a timestamp, and
+    it does not match Mongo, where { age: { $gt: 18 } } simply does not
+    match. Changed so an ordering comparison against a missing or null
+    field is false.
+    NOT relaxed: truthiness is still strict (`where age` is an error, not a
+    silent false), and a genuine cross-type comparison such as
+    `where name > 5` on a string field still errors. A missing field is a
+    fact about the data; comparing a string to an int is a mistake in the
+    query.
+    This is a semantic change to someone else's database and is flagged as
+    such in the pull request.
+
+----------------------------------------------------------------------
+G. TEST PLAN - status
+----------------------------------------------------------------------
+T1. Mapper, entity -> ASL.                                      DONE
+T2. Mapper, null and type edge cases.                           DONE
+    Includes non-finite doubles, which have no ASL literal and become null.
+T3. Mapper, ASL result -> entity.                        NOT APPLICABLE
+    fromResultDocument was not built; see D3.
+T4. Annotation reading.                                         DONE
+T5. Round trip against a live asdb.                     PARTIALLY DONE
+    The emitted ASL was driven against a running server directly, including
+    the injection payload and a reserved metric key, and read back
+    correctly. NOT done through Spring: booting the application needs
+    Docker for the Mongo path, and Docker is not installed.
+T6. Interface parity.                                        NOT DONE
+    Running Module 1's store tests against both implementations is the real
+    proof the rule-5 seam holds, and it is still the most valuable
+    outstanding test. Blocked on the same thing as T5.
+
+13 mapper tests pass. On the asdb side, 207 tests pass across the query
+engine, server, JSON writer and sweeper.
+
+----------------------------------------------------------------------
+H. WHAT IS STILL NOT READY
+----------------------------------------------------------------------
+Stated plainly so nobody reads "BUILT" at the top as "production".
+
+  NO AUTHENTICATION and NO TLS on the asdb server. Anyone who can reach the
+  port can read and delete everything. It binds to localhost by default and
+  exposing it takes an explicit --bind, so that is at least a decision
+  rather than an inherited default.
+
+  NO CRASH DURABILITY. No write-ahead log, no fsync discipline, no
+  recovery. A power cut mid-write can leave a torn file. Mongo journals.
+  This is the largest remaining gap against Mongo and it is not a small
+  piece of work.
+
+  SEQSCAN MATERIALIZES. A scan buffers the whole collection before the
+  first row is emitted, so `limit 25` still reads everything. The Volcano
+  interface above it is unaffected, so fixing the storage layer later turns
+  this into real streaming without touching another operator.
+
+  A LATENT STORAGE BUG. Two live Collection handles corrupt each other:
+  Catalog gives every Collection its own BufferPool, and two of them over
+  one file hand out the same page id. The Database facade is safe because
+  it never holds two handles at once, so this does not affect the adapter
+  today. Recorded as an ignored failing test in the asdb repo,
+  tests/multi_collection.rs.
+
+  SHAYVERI HAS NEVER BEEN RUN. Docker is not installed and port 8080 has
+  never been bound. The adapter compiles and its output is verified against
+  a live database, but the Spring wiring is unexercised.
+
+----------------------------------------------------------------------
+I. NOTE ON THE UPSTREAM REPO
+----------------------------------------------------------------------
+asdb belongs to a collaborator (github.com/shahyaranfaz/asdb, private).
+Work is on branches, not master, so each piece can be accepted or rejected
+independently:
+
+  phase5-planner-executor   query planner and executor, plus a fix for
+                            integer arithmetic that PANICKED on divide by
+                            zero and wrapped silently on overflow
+  asl-v0.2-separators       optional stage separators and backtick
+                            identifiers
+  asdb-server               HTTP server, JSON output, TTL sweeper
+                            (includes the v0.2 branch, per Q6)
+
+An early version of the Phase 5 work was built against a stale ZIP before
+the repo was located, which duplicated an evaluator and a Database struct
+the collaborator had already written. The branches above are the reconciled
+version and leave those files alone apart from the arithmetic fix. The
+lesson is cheap to state and was expensive to learn: confirm where the code
+actually lives before building on a copy of it.
