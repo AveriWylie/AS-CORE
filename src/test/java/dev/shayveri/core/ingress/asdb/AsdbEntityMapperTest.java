@@ -149,6 +149,10 @@ class AsdbEntityMapperTest {
 	void batchIsASingleStatement() {
 		String asl = AsdbEntityMapper.insertStatement(List.of(snapshot(), snapshot()));
 		assertEquals(1, asl.split("\\| insert").length - 1, "one insert stage: " + asl);
-		assertTrue(asl.contains("}, {"), "documents separated inside one stage: " + asl);
+		// BRACKETED. The unbracketed comma form does not parse; asserted here
+		// because a live server is the only other thing that would catch it.
+		assertTrue(asl.contains("| insert ["), "batch must be bracketed: " + asl);
+		assertTrue(asl.endsWith("]"), "batch must be bracketed: " + asl);
+		assertTrue(asl.contains("}, {"), "documents separated inside the bracket: " + asl);
 	}
 }

@@ -44,7 +44,7 @@ P1. asdb must compile.                                          DONE
 
 P2. Phase 5 - the query engine.                                 DONE
     Split in practice. The binder and the expression evaluator turned out
-    to be already written upstream (see the note in I). The planner and
+    to be already written upstream (see the note in J). The planner and
     executor were empty and were built: SeqScan, IndexScan, Filter,
     Projection, Drop, Sort, Limit, Offset, HashAggregate, HashJoin, Insert,
     Update, Delete, plus the physical plan types and the index-pushdown
@@ -394,7 +394,209 @@ T6. Interface parity.                                        NOT DONE
 engine, server, JSON writer and sweeper.
 
 ----------------------------------------------------------------------
-H. WHAT IS STILL NOT READY
+H. MEASURED PERFORMANCE, and the three bugs measuring found
+----------------------------------------------------------------------
+Benchmarked over HTTP against a release build, with telemetry-shaped
+documents (placeId, jobId, playerCount, serverFps, a nested customMetrics
+map, and an epoch-millis receivedAt).
+
+BUG 1, FOUND BY BENCHMARKING: BATCH INSERT WAS EMITTED WRONG.
+AsdbEntityMapper.insertStatement(List) emitted the unbracketed form:
+    from game_events | insert { ... }, { ... }
+ASL's batch insert is BRACKETED (asl.txt: "insert [ { ... }, { ... } ]").
+The unbracketed form parses as a single document followed by trailing
+tokens and fails. saveEvents would therefore have failed at runtime on
+EVERY batch, and the mapper unit tests did not catch it because they
+assert on the generated string rather than on whether a server accepts it.
+Fixed, and the test now asserts the brackets specifically.
+LESSON: a string-generating unit test proves the string is what you meant,
+not that it is valid. One live round trip was worth the whole file.
+
+BUG 2: PER-DOCUMENT OVERHEAD MADE BATCHING POINTLESS.
+Database::insert_doc opens a Collection (which builds its own DiskManager
+and BufferPool), inserts, flushes the whole pool, then opens a SECOND pool
+for the index update and flushes that. Two file opens and two full flushes
+PER DOCUMENT. delete_doc does the same.
+
+The signature was unmistakable once measured: throughput did not improve
+with batch size.
+
+    batch of 10     3079 docs/s
+    batch of 50     3126 docs/s
+    batch of 200    2932 docs/s
+
+Fixed by adding Database::insert_docs and delete_docs, which open the
+collection once per STATEMENT rather than once per document, and by having
+the executor's Insert and Delete operators use them. Handles are scoped so
+only one is alive at a time, which is required rather than tidy: two live
+Collection handles triggered the page-aliasing bug, since fixed at its root
+    (see THE ROOT CAUSE below).
+
+    batch of 10    19944 docs/s     6.5x
+    batch of 50    72654 docs/s      23x
+    batch of 200  181287 docs/s      62x
+
+And it now scales with batch size, which is the actual point.
+
+THE TTL SWEEP WAS THE WORST CASE, and it is specific to this application.
+
+    delete 2400 documents    0.86s  ->  0.004s      215x
+
+That number matters more than the insert numbers. The sweeper deletes every
+aged-out document in ONE statement while holding the server's global mutex,
+so its cost is time during which no telemetry can be written at all. At a
+seven-day retention with real volume, the old cost would have been a daily
+stall of tens of seconds. It is now milliseconds.
+
+READS WERE NEVER THE PROBLEM, at this scale:
+
+    full scan, 2400 docs         0.006s
+    scan + filter                0.002s
+    group by placeId             0.003s
+    limit 5                      0.002s
+
+Note the last one, and note that it was a WARNING SIGN read correctly. At the
+time, limit 5 was no faster than a full scan, because SeqScan materialized the
+whole collection before emitting its first row. It did not hurt at 2400
+documents, and it would have hurt badly once game_events reached millions,
+since that is the permanent research dataset and never expires.
+
+That is now fixed; see STREAMING SCANS below. Kept here because the reading
+was the useful part: a cheap query that costs the same as an expensive one is
+telling you something even when the absolute number looks fine.
+
+BUG 3, THE ONE THAT NEARLY SHIPPED AS AN OPTIMISATION.
+
+The planner originally refused to use an index for a ONE-SIDED range, falling
+back to a full scan. That is exactly the TTL sweeper's shape
+(`where receivedAt < cutoff`), so it was worth fixing: the key encoding is
+type-tagged and order preserving, so an open end can be closed with the type's
+minimum or maximum (planner::close_bounds).
+
+Measured immediately after making that change, sweeping 22k of 40k documents:
+
+    without index    0.020s
+    with index      18.803s        940x SLOWER
+
+The index was doing strictly less work and taking a thousand times longer.
+Cause: Database::range_index fetched each hit with get_doc, and get_doc opens a
+fresh Collection, DiskManager and BufferPool per call. 22,000 index hits meant
+22,000 file opens. The same per-document overhead as bugs 1 and 2, now on the
+read path.
+
+Fixed with a fetch_docs helper that opens the collection once.
+
+    without index    0.019s
+    with index       0.018s        parity restored
+
+Then measured across selectivity, 40k documents, which is the shape that
+decides whether an index is worth anything at all:
+
+    matched rows    unindexed   indexed    speedup
+       400 (1%)      0.0103s    0.0015s      6.9x
+      4000 (10%)     0.0110s    0.0032s      3.4x
+     20000 (50%)     0.0155s    0.0122s      1.3x
+
+Converging toward parity as the predicate matches more of the collection,
+which is the textbook result and a good sign the numbers are real. A healthy
+TTL sweep sits at the SELECTIVE end: it runs every sweep interval and expires
+only what aged out since the last one. So the index pays off precisely where
+this application needs it.
+
+THE ROOT CAUSE, FIXED.
+
+All three bugs above, plus the page-aliasing corruption, came from ONE
+decision: Catalog handed every Collection its own BufferPool. That is now a
+single DiskManager and a single BufferPool owned by Database, with HeapFile
+and Collection taking `bp: &mut BufferPool` per call.
+
+Rejected alternatives: a shared Rc<RefCell<BufferPool>>, which moves borrow
+checking to runtime and turns a nested access into a panic in a live database;
+and holding a &'a mut borrow in the struct, which makes two live collections a
+COMPILE error and so rules out the hash join that needs exactly that.
+
+  CORRECTNESS. tests/multi_collection.rs, which previously failed with 206
+  documents where 200 were expected and every one carrying the wrong
+  collection's data, now PASSES and is no longer #[ignore]d.
+
+  PERFORMANCE, on top of the batching already measured:
+
+      single insert    2198 -> 8434 docs/s
+      batch of 10     19944 -> 79597
+      batch of 50     72654 -> 226668
+      batch of 200   181287 -> 393062
+
+  Note the single-document row. Section H previously said that path was
+  deliberately not optimised because one document must pay the fixed
+  open-and-flush cost. Removing the shared-pool overhead improved it 3.8x for
+  free, which is the difference between working around a cost and removing it.
+
+  Cumulative against the first measurement: 2003 -> 8434 docs/s for a single
+  insert (4.2x), and 2932 -> 393062 for a batch of 200 (134x).
+
+STREAMING SCANS, unblocked by the same change.
+
+SeqScan used to materialise a whole collection before emitting its first row,
+because a streaming cursor means holding a Collection handle across calls,
+which was the corruption case. With one shared pool the cursor can be a plain
+PAGE ID, so the operator holds no borrow at all between calls, which is also
+what lets a hash join drive two scans at once.
+
+Measured on 200,000 documents:
+
+    limit 5          0.0072s      3090x faster than a full scan
+    limit 100        0.0145s      1530x
+    limit 10000      1.1781s        19x
+    full scan       22.2513s
+
+Before this, `limit 5` cost the same as the full scan. This matters most for
+game_events, which is the permanent research dataset and never expires, so it
+is the collection that grows without bound.
+
+A page at a time rather than a record at a time: the unit of IO is a page, so
+one record per call would re-pin the same frame for every slot on it.
+
+THE LESSON, which is the same one three times:
+Every one of these was per-document setup cost, not algorithmic. Insert,
+delete, and index fetch each opened a file handle and flushed a buffer pool
+per document. None of it was visible by reading the code, because each
+individual method looks reasonable in isolation. All of it was obvious within
+minutes of measuring.
+
+And all of it traced to one design decision, which is the more useful lesson:
+a single wrong ownership choice produced a data-corruption bug, three
+performance bugs, and a blocked feature (streaming), and fixing the ownership
+fixed all five at once. Chasing the symptoms one at a time would have been
+five separate patches and none of them would have been this good.
+
+REGRESSION TESTING, since these changes touched read and write paths:
+A differential harness runs 52 statements (queries, aggregates, joins,
+error cases, and the missing-field rules) against the pre-change binary and
+the current one, comparing status and body byte for byte. Identical after the
+batching change and again after the index change. Each historical commit also
+still passes its own suite:
+
+    890e2f1  his master                     133 tests
+    77ab987  planner and executor           172
+    34bfbf0  ASL v0.2                       183
+    f8fbc47  server, JSON, TTL              207
+    HEAD     batching and index fixes       217
+
+WHAT WAS NOT OPTIMISED, deliberately:
+Single-document insert is unchanged at ~2200/s, because one document still
+pays the fixed open-and-flush cost. That is the saveSnapshot path, which
+sends one snapshot per telemetry POST, so the batch win does not apply and
+2200/s is far above the expected rate. If snapshot volume ever justifies
+it, the fix is to buffer on the Java side and flush on a timer, which
+trades durability for throughput and should be a deliberate decision
+rather than a default.
+
+VERIFIED AFTER THE CHANGE: 500 documents inserted, indexed, filtered,
+grouped, partially deleted, then the server restarted and every result
+re-checked. Counts and contents identical across the restart.
+
+----------------------------------------------------------------------
+I. WHAT IS STILL NOT READY
 ----------------------------------------------------------------------
 Stated plainly so nobody reads "BUILT" at the top as "production".
 
@@ -408,24 +610,23 @@ Stated plainly so nobody reads "BUILT" at the top as "production".
   This is the largest remaining gap against Mongo and it is not a small
   piece of work.
 
-  SEQSCAN MATERIALIZES. A scan buffers the whole collection before the
-  first row is emitted, so `limit 25` still reads everything. The Volcano
-  interface above it is unaffected, so fixing the storage layer later turns
-  this into real streaming without touching another operator.
+  ONE WRITER AT A TIME. The server serializes every statement behind a
+  single mutex. Real concurrency needs page-level locking and a transaction
+  manager in the storage layer, which is now the largest remaining piece of
+  engine work after durability. Bounded by Spring's connection pool in
+  practice.
 
-  A LATENT STORAGE BUG. Two live Collection handles corrupt each other:
-  Catalog gives every Collection its own BufferPool, and two of them over
-  one file hand out the same page id. The Database facade is safe because
-  it never holds two handles at once, so this does not affect the adapter
-  today. Recorded as an ignored failing test in the asdb repo,
-  tests/multi_collection.rs.
+  A FULL SCAN IS STILL A FULL SCAN. Streaming makes `limit` cheap, but
+  scanning 200,000 documents end to end takes ~22s, most of it serialising
+  the response rather than reading pages. Fine for the telemetry write path
+  and for selective queries; not a reporting engine.
 
   SHAYVERI HAS NEVER BEEN RUN. Docker is not installed and port 8080 has
   never been bound. The adapter compiles and its output is verified against
   a live database, but the Spring wiring is unexercised.
 
 ----------------------------------------------------------------------
-I. NOTE ON THE UPSTREAM REPO
+J. NOTE ON THE UPSTREAM REPO
 ----------------------------------------------------------------------
 asdb belongs to a collaborator (github.com/shahyaranfaz/asdb, private).
 Work is on branches, not master, so each piece can be accepted or rejected

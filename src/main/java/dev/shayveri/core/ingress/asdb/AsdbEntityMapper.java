@@ -116,14 +116,18 @@ public final class AsdbEntityMapper {
 			throw new IllegalArgumentException("no entities to insert");
 		}
 		String collection = collectionOf(entities.get(0).getClass());
-		StringBuilder out = new StringBuilder("from ").append(collection).append(" | insert ");
+		// Batch insert is BRACKETED: insert [ {...}, {...} ]. The unbracketed
+		// comma form parses as a single document followed by trailing tokens,
+		// which fails. asl.txt spells this out; it is worth restating because
+		// the two forms look interchangeable and only one is.
+		StringBuilder out = new StringBuilder("from ").append(collection).append(" | insert [");
 		for (int i = 0; i < entities.size(); i++) {
 			if (i > 0) {
 				out.append(", ");
 			}
 			out.append(documentLiteral(entities.get(i)));
 		}
-		return out.toString();
+		return out.append("]").toString();
 	}
 
 	/** An entity as an ASL document literal, by reflection over its declared fields. */
