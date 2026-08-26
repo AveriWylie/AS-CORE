@@ -339,3 +339,19 @@ DEFERRED / V2 IDEAS (DO NOT BUILD YET)
   database) behind the existing store interfaces, starting with a low-risk
   slot (e.g. node heartbeats), once its server protocol and primitives
   (key expiry, atomic list ops) are confirmed.
+  PROMOTED TO A CONSTRUCTION DOCUMENT: see module_planning/
+  asdb_adapter_blueprint.txt. Decisions already taken there:
+    - Annotations: define our own @AsdbDocument and @AsdbIndexed, keep the
+      storage-neutral @Id from spring-data-commons. Entity classes keep
+      their shape; one import line changes per entity. The swap is possible
+      at all because MongoDB never sees a Java annotation - it is a mapping
+      instruction to the Java framework, not something the database
+      consumes.
+    - The Java side is nearly free (rule 5's seam is TelemetryStore); all
+      the real work is asdb-side.
+  BLOCKED ON, asdb-side: it does not currently compile (missing
+  DiskManager::free_page); the entire query engine is unwritten (binder,
+  planner, executor are empty files, so nothing executes); and there is no
+  server or wire protocol, which its own plan lists as out of scope for v1.
+  Unresolved and behaviour-affecting: asdb has no TTL, which
+  telemetry_snapshots depends on for its 7-day expiry.

@@ -23,10 +23,28 @@ public class SecurityConfig {
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health").permitAll()
-						// TODO(averi, A8 step 4): telemetry is ROBLOX-only. Add, ABOVE anyRequest:
-						//   .requestMatchers("/api/telemetry/**").hasRole("ROBLOX")
-						// Rule order matters: first match wins, so specific rules go before
-						// anyRequest(). This line is why the controller never checks identity.
+
+						/*
+						 * /error must be permitted or EVERY error response becomes a
+						 * 403. When a request fails validation, Spring forwards it
+						 * internally to /error to render the body, and that forward
+						 * arrives WITHOUT the original authentication. anyRequest()
+						 * then rejects it, so a missing field returned 403 FORBIDDEN
+						 * instead of the 400 this module's spec calls for. Measured,
+						 * not theorised: an empty body returned 403 before this line.
+						 *
+						 * This does not widen access. The real request has already
+						 * been authenticated and rejected on its own merits by the
+						 * time the forward happens; permitting /error only lets the
+						 * explanation through.
+						 */
+						.requestMatchers("/error").permitAll()
+
+						// A8 step 4: telemetry is ROBLOX-only. Rule order matters,
+						// first match wins, so specific rules go above anyRequest().
+						// This line is why the controller never checks identity.
+						.requestMatchers("/api/telemetry/**").hasRole("ROBLOX")
+
 						.anyRequest().authenticated())
 				.addFilterBefore(new ApiKeyAuthFilter(apiKeyProperties), UsernamePasswordAuthenticationFilter.class);
 

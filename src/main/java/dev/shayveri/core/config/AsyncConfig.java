@@ -12,7 +12,7 @@ import java.util.concurrent.Executors;
  * booting, so this one cannot ship as a stub. Read it instead - it is two
  * lines consuming two APIs:
  *
- *   @Bean (Spring DI) - "call this method once at startup, keep the result,
+ *   {@code @Bean} (Spring DI) - "call this method once at startup, keep the result,
  *       inject it wherever a constructor asks for an Executor."
  *   Executors.newVirtualThreadPerTaskExecutor() (Java 21) - an Executor that
  *       runs EVERY submitted task on a fresh virtual thread. Virtual threads

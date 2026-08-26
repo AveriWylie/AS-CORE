@@ -6,7 +6,6 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -68,23 +67,26 @@ import org.springframework.data.mongodb.core.mapping.Document;
  */
 public final class AsdbEntityMapper {
 
-	private AsdbEntityMapper() {
-	}
+	private AsdbEntityMapper() { }
 
-	/** The collection an entity class maps to, from {@code @Document}. */
+	// The collection an entity class maps to, from {@code @Document}
 	public static String collectionOf(Class<?> type) {
+
 		Document annotation = type.getAnnotation(Document.class);
+
 		if (annotation == null) {
-			throw new IllegalArgumentException(
-					type.getSimpleName() + " has no @Document annotation, so it has no collection name");
+			throw new IllegalArgumentException(type.getSimpleName() + " has no @Document annotation, so it has no collection name");
 		}
+
 		// Spring Data allows either @Document("name") or @Document(collection = "name")
 		String name = annotation.value().isEmpty() ? annotation.collection() : annotation.value();
+
 		if (name.isEmpty()) {
 			// Spring Data's own fallback: the uncapitalised simple class name
 			String simple = type.getSimpleName();
 			return Character.toLowerCase(simple.charAt(0)) + simple.substring(1);
 		}
+
 		return name;
 	}
 
@@ -112,26 +114,31 @@ public final class AsdbEntityMapper {
 	 * receives a whole batch.
 	 */
 	public static String insertStatement(List<?> entities) {
+
 		if (entities.isEmpty()) {
 			throw new IllegalArgumentException("no entities to insert");
 		}
+
 		String collection = collectionOf(entities.get(0).getClass());
 		// Batch insert is BRACKETED: insert [ {...}, {...} ]. The unbracketed
 		// comma form parses as a single document followed by trailing tokens,
 		// which fails. asl.txt spells this out; it is worth restating because
 		// the two forms look interchangeable and only one is.
 		StringBuilder out = new StringBuilder("from ").append(collection).append(" | insert [");
+
 		for (int i = 0; i < entities.size(); i++) {
 			if (i > 0) {
 				out.append(", ");
 			}
 			out.append(documentLiteral(entities.get(i)));
 		}
+
 		return out.append("]").toString();
 	}
 
 	/** An entity as an ASL document literal, by reflection over its declared fields. */
 	public static String documentLiteral(Object entity) {
+
 		StringBuilder out = new StringBuilder("{ ");
 		boolean first = true;
 
@@ -141,9 +148,10 @@ public final class AsdbEntityMapper {
 			if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {
 				continue;
 			}
-			field.setAccessible(true);
 
+			field.setAccessible(true);
 			Object value;
+
 			try {
 				value = field.get(entity);
 			} catch (IllegalAccessException e) {
@@ -158,9 +166,12 @@ public final class AsdbEntityMapper {
 			if (!first) {
 				out.append(", ");
 			}
+
 			first = false;
 			out.append(field.getName()).append(": ").append(literal(value));
+
 		}
+
 		return out.append(" }").toString();
 	}
 
@@ -171,22 +182,27 @@ public final class AsdbEntityMapper {
 	 * this class: every caller should be going through {@code insertStatement}.
 	 */
 	static String literal(Object value) {
+
 		if (value == null) {
 			return "null";
 		}
+
 		if (value instanceof String s) {
 			return quote(s);
 		}
+
 		if (value instanceof Instant instant) {
 			return Long.toString(instant.toEpochMilli()); // see the class note
 		}
+
 		if (value instanceof Boolean b) {
 			return b ? "true" : "false";
 		}
-		if (value instanceof Integer || value instanceof Long || value instanceof Short
-				|| value instanceof Byte) {
+
+		if (value instanceof Integer || value instanceof Long || value instanceof Short || value instanceof Byte) {
 			return value.toString();
 		}
+
 		if (value instanceof Double || value instanceof Float) {
 			double d = ((Number) value).doubleValue();
 			// asdb's JSON writer maps non-finite floats to null, and ASL has no
@@ -197,6 +213,7 @@ public final class AsdbEntityMapper {
 			}
 			return value.toString();
 		}
+
 		if (value instanceof Map<?, ?> map) {
 			StringBuilder out = new StringBuilder("{ ");
 			boolean first = true;
@@ -215,6 +232,7 @@ public final class AsdbEntityMapper {
 			}
 			return out.append(" }").toString();
 		}
+
 		if (value instanceof Collection<?> collection) {
 			StringBuilder out = new StringBuilder("[");
 			boolean first = true;
@@ -227,6 +245,7 @@ public final class AsdbEntityMapper {
 			}
 			return out.append("]").toString();
 		}
+
 		if (value.getClass().isArray()) {
 			int length = java.lang.reflect.Array.getLength(value);
 			StringBuilder out = new StringBuilder("[");
@@ -261,7 +280,9 @@ public final class AsdbEntityMapper {
 	 * see a raw byte inside a string literal.
 	 */
 	static String quote(String raw) {
+
 		StringBuilder out = new StringBuilder(raw.length() + 2).append('"');
+
 		for (int i = 0; i < raw.length(); i++) {
 			char c = raw.charAt(i);
 			switch (c) {
@@ -270,14 +291,12 @@ public final class AsdbEntityMapper {
 				case '\n' -> out.append("\\n");
 				case '\t' -> out.append("\\t");
 				case '\r' -> out.append("\\r");
-				default -> {
-					if (c >= 0x20) {
-						out.append(c);
-					}
-					// below 0x20 and not one of the above: dropped, see above
+				// below 0x20 and not one of the above: dropped, see above
+				default -> {if (c >= 0x20) {out.append(c);}
 				}
 			}
 		}
+
 		return out.append('"').toString();
 	}
 
@@ -291,18 +310,21 @@ public final class AsdbEntityMapper {
 	 * is not worth failing an entire telemetry batch over.
 	 */
 	static String backtick(String name) {
-		boolean plain = !name.isEmpty()
-				&& (Character.isLetter(name.charAt(0)) || name.charAt(0) == '_');
+
+		boolean plain = !name.isEmpty() && (Character.isLetter(name.charAt(0)) || name.charAt(0) == '_');
+
 		for (int i = 0; plain && i < name.length(); i++) {
 			char c = name.charAt(i);
 			plain = Character.isLetterOrDigit(c) || c == '_';
 		}
+
 		// A reserved word is syntactically a plain identifier and still has to
 		// be quoted: asdb's lexer maps "order" to a stage-keyword token before
 		// the parser ever sees it, so { order: 1 } is a parse error.
 		if (plain && RESERVED.contains(name)) {
 			plain = false;
 		}
+
 		return plain ? name : "`" + name.replace("`", "") + "`";
 	}
 

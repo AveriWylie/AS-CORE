@@ -10,24 +10,21 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
  * B3 - turns on the STOMP broker (Phase-1-minimal slice of Module 6).
  *
  * Consumes (not ours):
- *   @EnableWebSocketMessageBroker - activates Spring's whole STOMP stack,
+ *   {@code @EnableWebSocketMessageBroker} - activates Spring's whole STOMP stack,
  *       including the SimpMessagingTemplate bean that B2 injects.
  *   WebSocketMessageBrokerConfigurer - the configuration interface; we
  *       override exactly two of its methods:
  *       registerStompEndpoints(StompEndpointRegistry) - WHERE clients connect
  *       configureMessageBroker(MessageBrokerRegistry) - WHAT destinations exist
  *
- * TODO(averi):
- *   1. registerStompEndpoints:
- *          registry.addEndpoint("/ws").setAllowedOriginPatterns("*");
- *      "/ws" is the URL the dashboard's WebSocket handshake hits
- *      (ws://localhost:8080/ws). The origin pattern is dev-open for now;
- *      it tightens when the dashboard's real origin is known.
- *   2. configureMessageBroker:
- *          registry.enableSimpleBroker("/topic");
- *      = every destination starting /topic is handled by the in-memory
- *      broker (fine for two users, per the plan; the external-broker swap
- *      seam is exactly this line).
+ * WHAT THE TWO OVERRIDES SET, and why:
+ *   registerStompEndpoints - "/ws" is the URL the dashboard's WebSocket
+ *      handshake hits (ws://localhost:8080/ws). The origin pattern is
+ *      dev-open for now; it tightens when the dashboard's real origin is
+ *      known.
+ *   configureMessageBroker - every destination starting /topic is handled
+ *      by the in-memory broker (fine for two users, per the plan; the
+ *      external-broker swap seam is exactly that line).
  *
  * SECURITY NOTE (per the plan's Module 6 design): handshake auth for the
  * DASH key in the CONNECT frame is deliberately NOT here yet - it comes
@@ -41,14 +38,25 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+	/*
+	 * These two were empty, and that stopped the whole application from
+	 * starting: @EnableWebSocketMessageBroker creates subProtocolWebSocketHandler,
+	 * which fails on startup with "No handlers" when no endpoint has been
+	 * registered. An empty override is not the same as no override, and the
+	 * failure names a bean nobody wrote, so it does not read as this file's
+	 * fault.
+	 *
+	 * Both bodies are exactly what the notes above specify. Nothing new was
+	 * decided here.
+	 */
 	@Override
 	public void registerStompEndpoints(StompEndpointRegistry registry) {
-		// TODO(averi): step 1 above
+		registry.addEndpoint("/ws").setAllowedOriginPatterns("*");
 	}
 
 	@Override
 	public void configureMessageBroker(MessageBrokerRegistry registry) {
-		// TODO(averi): step 2 above
+		registry.enableSimpleBroker("/topic");
 	}
 
 }

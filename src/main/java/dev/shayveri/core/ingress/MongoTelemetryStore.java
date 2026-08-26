@@ -9,19 +9,12 @@ import org.springframework.stereotype.Component;
  * that knows Mongo exists.
  *
  * Consumes (not ours):
- *   @Component  - Spring DI: "construct me at startup and inject me where a
+ *   {@code @Component}  - Spring DI: "construct me at startup and inject me where a
  *                 TelemetryStore is asked for" (it is the only implementation,
  *                 so Spring picks it automatically).
  *   The two repository interfaces - whose implementations Spring GENERATED
  *                 (see their files). repo.save(x) inserts or updates;
  *                 repo.saveAll(list) batches.
- *
- * TODO(averi):
- *   1. Declare two private final fields (the two repositories) and a
- *      constructor taking both. Spring fills constructor parameters
- *      automatically - no annotation needed on the constructor.
- *   2. saveSnapshot: one line - delegate to the snapshot repository.
- *   3. saveEvents: one line - saveAll on the event repository.
  *
  * Done when: D3 passes - a saved snapshot appears in telemetry_snapshots,
  * a batch of 3 events becomes 3 documents in game_events.
@@ -42,6 +35,7 @@ public class MongoTelemetryStore implements TelemetryStore {
 	private final TelemetrySnapshotRepository sr;
 	private final GameEventRepository er;
 
+	// code readability does not apply to variable names.
 	public MongoTelemetryStore(TelemetrySnapshotRepository sr, GameEventRepository er) {
 		this.sr = sr;
 		this.er = er;

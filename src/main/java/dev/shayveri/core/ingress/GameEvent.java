@@ -57,7 +57,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
  * non-null, downstream code can iterate or call .size() with zero null checks.
  *
  * Consumes: @Document("game_events") and @Id, exactly as in A3. No
- * @Indexed(expireAfter) - the absence IS the design decision (events are
+ * {@code @Indexed}(expireAfter) - the absence IS the design decision (events are
  * permanent). A plain @Indexed on placeId: heatmap queries will filter by it.
  *
  * Done when: D3 shows a batch of 3 posted events -> 3 documents here, and
@@ -68,7 +68,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document("game_events")
 public class GameEvent {
 
-    // --- fields ---
     @Id private String id;
     private String type;
     // plain index (NOT a TTL): heatmap queries filter by placeId
@@ -77,8 +76,7 @@ public class GameEvent {
     private Instant occurredAt;
     private GameEventRequest.Position position;
     private Map<String, Object> data;
-    // NOTE:
-    // no @Indexed(expireAfter) here - game events never expire (see above)
+    // NOTE: no @Indexed(expireAfter) here - game events never expire (see above)
     private Instant receivedAt;
 
     // --- Constructor (everything except id; Mongo assigns id) ---
@@ -111,38 +109,24 @@ public class GameEvent {
                 request.position(),
                 request.data(),
                 receivedAt);
+
     }
 
     // --- getters (no setters per security model) ---
-    public String getId() {
-        return id;
-    }
+    public String getId() {return id;}
 
-    public String getType() {
-        return type;
-    }
+    public String getType() {return type;}
 
-    public String getPlaceId() {
-        return placeId;
-    }
+    public String getPlaceId() {return placeId;}
 
-    public String getJobId() {
-        return jobId;
-    }
+    public String getJobId() {return jobId;}
 
-    public Instant getOccurredAt() {
-        return occurredAt;
-    }
+    public Instant getOccurredAt() {return occurredAt;}
 
-    public GameEventRequest.Position getPosition() {
-        return position;
-    }
+    public GameEventRequest.Position getPosition() {return position;}
 
-    public Map<String, Object> getData() {
-        return Map.copyOf(data);
-    }
+    public Map<String, Object> getData() {return Map.copyOf(data);}
 
-    public Instant getReceivedAt() {
-        return receivedAt;
-    }
+    public Instant getReceivedAt() {return receivedAt;}
+
 }

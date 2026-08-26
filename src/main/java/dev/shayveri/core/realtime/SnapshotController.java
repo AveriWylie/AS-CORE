@@ -1,7 +1,6 @@
 package dev.shayveri.core.realtime;
 
 import java.util.Map;
-
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -12,7 +11,5 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class SnapshotController {
 	@GetMapping("/api/snapshot")
-	public Object snapshot() {
-		throw new UnsupportedOperationException("TODO(averi): R2");
-	}
+	public Object snapshot() {throw new UnsupportedOperationException("TODO(averi): R2");}
 }

@@ -10,27 +10,23 @@ import jakarta.validation.constraints.NotNull;
  * accepts a JSON ARRAY of these (batching), so the controller parameter
  * will be List<GameEventRequest>.
  *
+ * What is batching:
+ * FIRSTLY, the problem is that every telemtry request sends http headers (metadata)
+ * alongside JSON data, If u send a seperate networkr equest every time a player clicks
+ * a button, the network overhead will overwhelm the roblox servers and this backend.
+ *
+ * Batching is the solution, collect events in a local Luau table inside Roblox and
+ * send them all over the network in a single, larger compressed JSON payload every
+ * 10 to 30 seconds.
+ *
+ * one of many network engineering principles that (this one less so but other ne
+ * principles) are reasons for using java over something that compiles faster yet
+ * still uses oop like C++. Other ones are a quick google search away or stated
+ * else where inline in this project
+ *
  * Consumes: same as A1 - Jackson (automatic binding; it also parses ISO-8601
  * strings like "2026-07-08T12:00:00Z" into Instant for free) and Jakarta
  * Validation annotations.
- *
- * TODO(averi): add validation:
- *   type       @NotBlank   - PLAYER_DEATH | ROUND_START | ROUND_END |
- *                            PERF_SPIKE | CUSTOM (kept as a String for v1;
- *                            an enum would 400 on any unknown value, which
- *                            is too strict while the Luau side is evolving)
- *   placeId    @NotBlank
- *   jobId      @NotBlank
- *   occurredAt @NotNull    - the client-side timestamp
- *   position   (no annotation - only PLAYER_DEATH sends it)
- *    - Nested position vector for creation of heatmaps (player deaths) later. A nested record
- * 		maps to a nested JSON object: {"position": {"x": 1, "y": 2, "z": 3}}.
- * 		No validation needed - if present, Jackson requires all three numbers
- * 		to parse.
- *   data       (no annotation - optional payload)
- *    - This is a flexible "extra information" field. again optional
- * 		This lets the client attach arbitrary metadata without changing
- * 		the DTO every time a new event type is introduced.
  *
  * Plus the same compact-constructor trick as A1 to default data to Map.of().
  *
@@ -45,6 +41,8 @@ public record GameEventRequest(
 		@NotBlank String type,
 		@NotBlank String placeId,
 		@NotBlank String jobId,
+		// How we ensure null type safety at compile time
+		// java allows null type objects at any time
 		@NotNull Instant occurredAt,
 		// no validation field -> optionally in JSON request
 		Position position,
@@ -62,9 +60,7 @@ public record GameEventRequest(
 	 * }
 	 * ------------------------------------------
 	 */
-	public GameEventRequest {
-		data = data == null ? Map.of() : data;
-	}
+	public GameEventRequest {data = data == null ? Map.of() : data;}
 
 	public record Position(double x, double y, double z) { }
 

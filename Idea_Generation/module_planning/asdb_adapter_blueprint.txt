@@ -605,9 +605,37 @@ Stated plainly so nobody reads "BUILT" at the top as "production".
   exposing it takes an explicit --bind, so that is at least a decision
   rather than an inherited default.
 
-  NO CRASH DURABILITY. No write-ahead log, no fsync discipline, no
-  recovery. A power cut mid-write can leave a torn file. Mongo journals.
-  This is the largest remaining gap against Mongo and it is not a small
+  DURABILITY IS PARTIAL, and the distinction is sharper than "no crash
+  durability", which is what this document said before it was tested.
+
+  MEASURED: SIGKILL the server mid-write, four trials at different points,
+  killing after 0.3s to 2.5s of continuous batched inserts.
+
+      acked    survived    integrity
+      21750      21750     no duplicates, no corruption
+      29300      29300     no duplicates, no corruption
+      37150      37150     no duplicates, no corruption
+      45800      45800     no duplicates, no corruption
+
+  Every acknowledged write survived a hard process kill, and the file
+  reopened cleanly each time. That is better than assumed and worth
+  knowing, because it covers the common failure: a panic, an OOM kill, a
+  container restart, a bad deploy.
+
+  WHY it holds: every statement ends in flush_all, which writes dirty pages
+  through with write(2). Killing the PROCESS does not lose data the OS is
+  already holding.
+
+  WHAT IT DOES NOT COVER: there is no fsync anywhere in the codebase,
+  confirmed by grep. So the OS page cache is the last line of defence.
+  Power loss, a kernel panic, or a yanked disk loses whatever the OS had not
+  flushed, and can tear a page mid-write with no log to recover from. Mongo
+  journals; asdb does not.
+
+  So: process-crash safe, VERIFIED. Power-loss safe, NO. For telemetry that
+  is a defensible trade, since the data is disposable by design and a
+  7-day window is already lossy. For anything that must not lose a write it
+  is a blocker, and closing it means a write-ahead log, which is a large
   piece of work.
 
   ONE WRITER AT A TIME. The server serializes every statement behind a

@@ -16,14 +16,14 @@ import org.springframework.data.mongodb.core.mapping.Document;
  *
  * Consumes (not ours) - all from Spring Data MongoDB:
  *
- *   @Document("telemetry_snapshots")
+ *   {@code @Document}("telemetry_snapshots")
  *              - class-level: "instances of this class live in the Mongo
  *                collection named telemetry_snapshots."
  *                (import org.springframework.data.mongodb.core.mapping.Document)
- *   @Id        - marks the identifier field; leave it null on insert and
+ *   {@code @Id}        - marks the identifier field; leave it null on insert and
  *                Mongo generates a unique id, Spring writes it back.
  *                (import org.springframework.data.annotation.Id)
- *   @Indexed(expireAfter = "7d")
+ *   {@code @Indexed}(expireAfter = "7d")
  *              - THE TTL: put this on the receivedAt field and Mongo itself
  *                deletes documents 7 days after that instant. No cleanup
  *                job, no scheduler - the database does it. This is the
@@ -39,23 +39,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
  *
  * so a fresh database gets the TTL index automatically. Without it the
  * annotation is decoration and nothing ever expires.
- *
- * TODO(averi): build the class:
- *   1. @Document annotation on the class.
- *   2. Fields: @Id String id;
- *              String placeId; String jobId; Integer playerCount;
- *              Double serverFps; String round;
- *              Map<String, Object> customMetrics;
- *              @Indexed(expireAfter = "7d") Instant receivedAt;
- *   3. A constructor taking everything except id (id stays null until
- *      Mongo assigns it), and getters. (Setters optional - Spring Data can
- *      populate final-less fields via reflection; keep it simple: private
- *      fields, one constructor, getters.)
- *   4. A static factory tying the layers together:
- *      static TelemetrySnapshot from(TelemetrySnapshotRequest req, Instant
- *      receivedAt) so the service (A7) converts request -> document in one
- *      call and the conversion logic has exactly one home. Ddeliberately not
- *      a field of TelemetrySnapshotRequest see idea generation.
  *
  *     Note:
  *     Integer is java's object version of int, int cannot be null Integer
@@ -103,10 +86,7 @@ public class TelemetrySnapshot {
     }
 
     // --- Static object creation factory (calls dc above) --
-    public static TelemetrySnapshot from(
-            // paramaters bind call here
-            TelemetrySnapshotRequest request,
-            Instant receivedAt) {
+    public static TelemetrySnapshot from(TelemetrySnapshotRequest request, Instant receivedAt) {
 
         return new TelemetrySnapshot(
                 request.placeId(),

@@ -85,11 +85,11 @@ Event stream:      GameEventRequest (A2)          ->  GameEvent (A4)
 The two `...Request` records only *look* related because both validate
 incoming JSON, both end in `Request`, and both live in `ingress`. They are two
 lanes of the same highway, not one feeding the other. A snapshot answers
-"what is the state?"; an event answers "what happened?" — different data,
+"what is the state?"; an event answers "what happened?" - different data,
 different endpoint, different document.
 
 (The stored forms differ in one telling way, too: snapshots carry a 7-day TTL
-because raw state is disposable, while `GameEvent` has no TTL — events are the
+because raw state is disposable, while `GameEvent` has no TTL - events are the
 permanent research dataset. See below on `@Indexed`.)
 
 ## Encapsulation in this document class

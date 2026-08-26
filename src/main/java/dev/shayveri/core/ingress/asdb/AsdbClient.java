@@ -53,6 +53,7 @@ public class AsdbClient {
 	 *                  see the injection note there.
 	 */
 	public String execute(String statement) {
+
 		HttpRequest request = HttpRequest.newBuilder()
 				.uri(queryEndpoint)
 				.timeout(requestTimeout)
@@ -61,6 +62,7 @@ public class AsdbClient {
 				.build();
 
 		HttpResponse<String> response;
+
 		try {
 			response = http.send(request, HttpResponse.BodyHandlers.ofString());
 		} catch (java.io.IOException e) {
@@ -73,10 +75,12 @@ public class AsdbClient {
 		}
 
 		int status = response.statusCode();
+
 		if (status < 200 || status >= 300) {
 			throw new AsdbException(
 					"asdb returned " + status + ": " + response.body() + "  (statement: " + statement + ")");
 		}
+
 		return response.body();
 	}
 
@@ -103,6 +107,7 @@ public class AsdbClient {
 
 	/** Unchecked so it matches the Spring Data repository style the rest of the ingress code uses. */
 	public static class AsdbException extends RuntimeException {
+
 		public AsdbException(String message) {
 			super(message);
 		}

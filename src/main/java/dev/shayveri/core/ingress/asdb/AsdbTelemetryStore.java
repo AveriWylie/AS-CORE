@@ -2,11 +2,11 @@ package dev.shayveri.core.ingress.asdb;
 
 import java.time.Duration;
 import java.util.List;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-
 import dev.shayveri.core.ingress.GameEvent;
 import dev.shayveri.core.ingress.TelemetrySnapshot;
 import dev.shayveri.core.ingress.TelemetryStore;
@@ -23,13 +23,20 @@ import dev.shayveri.core.ingress.TelemetryStore;
  * <p>SELECTING IT. Both this and {@code MongoTelemetryStore} implement the same
  * interface, so exactly one must be active or Spring fails to start with an
  * ambiguous-bean error. That is what the {@code @ConditionalOnProperty} pair
- * does. Mongo stays the default when the property is absent, so an existing
- * deployment that has never heard of this class keeps working:
+ * does.
+ *
+ * <p>ASDB IS NOW THE DEFAULT: application.yml sets {@code shayveri.store: asdb},
+ * so this is the active implementation unless something overrides it. Mongo is
+ * the fallback rather than the other way round, and is one flag away:
  *
  * <pre>
- *   shayveri.store=asdb
- *   shayveri.store.asdb.url=http://127.0.0.1:7070
+ *   ./gradlew bootRun --args='--shayveri.store=mongo'
  * </pre>
+ *
+ * <p>Note the code still treats an ABSENT property as Mongo
+ * ({@code matchIfMissing = true} on MongoTelemetryStore). That is deliberate:
+ * the default lives in configuration, where it is visible and overridable,
+ * rather than being compiled in.
  *
  * <p>WHAT IS NOT EQUIVALENT TO MONGO, stated here rather than discovered later:
  *
@@ -63,17 +70,15 @@ import dev.shayveri.core.ingress.TelemetryStore;
 @ConditionalOnProperty(name = "shayveri.store", havingValue = "asdb")
 public class AsdbTelemetryStore implements TelemetryStore {
 
+	private static final Logger log = LoggerFactory.getLogger(AsdbTelemetryStore.class);
 	private final AsdbClient client;
+	private final String url;
 
-	public AsdbTelemetryStore(
-			@Value("${shayveri.store.asdb.url:http://127.0.0.1:7070}") String url,
-			@Value("${shayveri.store.asdb.connect-timeout-ms:2000}") long connectTimeoutMs,
-			@Value("${shayveri.store.asdb.request-timeout-ms:5000}") long requestTimeoutMs) {
-		this.client = new AsdbClient(
-				url,
-				Duration.ofMillis(connectTimeoutMs),
-				Duration.ofMillis(requestTimeoutMs));
-		ensureSchema();
+	public AsdbTelemetryStore(@Value("${shayveri.store.asdb.url:http://127.0.0.1:7070}") String url,
+							  @Value("${shayveri.store.asdb.connect-timeout-ms:2000}") long connectTimeoutMs,
+							  @Value("${shayveri.store.asdb.request-timeout-ms:5000}") long requestTimeoutMs) {
+		this.url = url;
+		this.client = new AsdbClient(url, Duration.ofMillis(connectTimeoutMs), Duration.ofMillis(requestTimeoutMs)); ensureSchema();
 	}
 
 	@Override
@@ -89,6 +94,7 @@ public class AsdbTelemetryStore implements TelemetryStore {
 		if (events == null || events.isEmpty()) {
 			return;
 		}
+
 		client.execute(AsdbEntityMapper.insertStatement(events));
 	}
 
@@ -109,6 +115,22 @@ public class AsdbTelemetryStore implements TelemetryStore {
 	 * here; it surfaces on the first write instead.
 	 */
 	private void ensureSchema() {
+		/*
+		 * Health is checked FIRST so an unreachable server is reported as
+		 * exactly that. Without this, every schema step fails and logs
+		 * "skipped", which is the same message a healthy server produces on
+		 * every restart after the first (because the collection already
+		 * exists). A dead database and a normal restart looked identical,
+		 * which is the worst possible pair of things to conflate.
+		 */
+		if (!client.isHealthy()) {
+			log.error("asdb is UNREACHABLE. Telemetry writes will fail until it is running. "
+					+ "Start it with: asdb telemetry.db --port 7070 "
+					+ "--ttl telemtry_snapshots.receivedAt=7d   "
+					+ "(or set shayveri.store=mongo to use MongoDB instead)");
+			return;
+		}
+
 		for (Class<?> entity : List.of(TelemetrySnapshot.class, GameEvent.class)) {
 			String collection = AsdbEntityMapper.collectionOf(entity);
 			attempt("create " + collection + " {}");
@@ -116,14 +138,21 @@ public class AsdbTelemetryStore implements TelemetryStore {
 				attempt("create index on " + collection + "." + field);
 			}
 		}
+
+		log.info("asdb schema ready at {}", url);
 	}
 
+	/*
+	 * Startup DDL is not fatal, because "already exists" is the normal case on
+	 * every restart after the first and asdb reports it as an error rather than
+	 * a no-op. Logged at DEBUG for that reason: by the time this runs the
+	 * server is known reachable, so a failure here is almost always benign.
+	 */
 	private void attempt(String statement) {
 		try {
 			client.execute(statement);
 		} catch (AsdbClient.AsdbException e) {
-			// expected on every restart after the first; see the note above
-			System.out.println("asdb schema step skipped (" + statement + "): " + e.getMessage());
+			log.debug("asdb schema step skipped ({}): {}", statement, e.getMessage());
 		}
 	}
 

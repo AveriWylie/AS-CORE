@@ -6,13 +6,15 @@ import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.Executor;
 
+import org.springframework.beans.factory.annotation.Qualifier;
+
 /**
  * A7 - the module's logic: accept -> stamp receivedAt -> persist (via the
  * A5 seam) -> broadcast (via the B1 facade). Runs async so the controller
  * returns 202 in microseconds regardless of Mongo's mood.
  *
  * Consumes (not ours):
- *   @Service - Spring DI (same as @Component, the name signals "logic lives
+ *   {@code @Service} - Spring DI (same as @Component, the name signals "logic lives
  *       here").
  *   Executor (java.util.concurrent) - one method: execute(Runnable). The
  *       bean injected is AsyncConfig's virtual-thread executor. Calling
@@ -23,53 +25,64 @@ import java.util.concurrent.Executor;
  * this class imports the INTERFACES, never MongoTelemetryStore or
  * StompRealtimePublisher. Spring injects the implementations.
  *
- * TODO(averi):
- *   1. Three private final fields (store, publisher, executor) + constructor.
- *   2. accept(request):
- *        a. Instant receivedAt = Instant.now();   <- stamp BEFORE going async,
- *           so queue delay never skews the timestamp
- *        b. TelemetrySnapshot snapshot = TelemetrySnapshot.from(request, receivedAt);
- *        c. executor.execute(() -> {
- *               store.saveSnapshot(snapshot);
- *               publisher.publish("/topic/telemetry/" + snapshot's placeId, snapshot);
- *           });
- *      Topic name comes from the plan: /topic/telemetry/{placeId}.
- *   3. acceptEvents(requests): same shape - stamp once, map the list through
- *      GameEvent.from(...), then async store.saveEvents(list). (No broadcast
- *      for events in Phase 1 - snapshots only, per the plan's "emits".)
- *
  * Done when: D5 passes - the controller's 202 does not wait on storage.
  */
 
 @Service
 public class TelemetryService {
 
-	private final TelemetryStore TS;
-	private final RealtimePublisher RP;
-	private final Executor EX;
+	private final TelemetryStore ts;
+	private final RealtimePublisher rp;
+	private final Executor ex;
 
-	public TelemetryService(TelemetryStore TS, RealtimePublisher RP, Executor EX) {
-
-		this.TS = TS;
-		this .RP = RP;
-		this.EX = EX;
-
+	/*
+	 * {@code @Qualifier} is REQUIRED here, not decoration. Enabling WebSocket/STOMP
+	 * publishes three Executor beans of its own (clientInboundChannelExecutor,
+	 * clientOutboundChannelExecutor, brokerChannelExecutor), so by type alone
+	 * there are four candidates and Spring refuses to guess. Without this the
+	 * whole application fails to start with NoUniqueBeanDefinitionException,
+	 * on any storage backend.
+	 */
+	public TelemetryService(TelemetryStore ts, RealtimePublisher rp, @Qualifier("telemetryExecutor") Executor ex) {
+		this.ts = ts;
+		this.rp = rp;
+		this.ex = ex;
 	}
 
-	public void accept(TelemetrySnapshotRequest request) {
+	public void acceptSnapshot(TelemetrySnapshotRequest request) {
 
 		Instant recievedAt = Instant.now();
 		TelemetrySnapshot snapshot = TelemetrySnapshot.from(request, recievedAt);
-
-		EX.execute(() -> {
-			TS.saveSnapshot(snapshot);
-			RP.publish("/topic/telemetry/" + snapshot.getPlaceId(), snapshot);
+		// Executor                              ← the interface: one method, execute(Runnable)
+		//   ↑ implemented by
+		// newVirtualThreadPerTaskExecutor()     ← the implementation your @Bean returns
+		// ex.execute(work) is the call, newVirtualThreadPerTaskExecutor() is what receives it
+		ex.execute(() -> {
+			ts.saveSnapshot(snapshot);
+			rp.publish("/topic/telemetry/" + snapshot.getPlaceId(), snapshot);
 		});
 
 	}
 
-	public void acceptEvents(List<GameEventRequest> requests) {
-		throw new UnsupportedOperationException("TODO(averi): implement per A7 step 3");
+	/*
+	 * A7 step 3. Mirrors acceptSnapshot with two deliberate differences, both
+	 * from the spec above:
+	 *
+	 *   ONE receivedAt for the whole batch, stamped before mapping. Calling
+	 *   Instant.now() per event would spread one request across several
+	 *   milliseconds and make "which events arrived together" unanswerable.
+	 *
+	 *   NO broadcast. Snapshots feed the live dashboard; events are the
+	 *   permanent research dataset and have no realtime consumer.
+	 *
+	 * The list is mapped BEFORE handing off to the executor, so the request
+	 * objects are not read from another thread after the HTTP request has been
+	 * recycled.
+	 */
+	public void acceptEvents(List<GameEventRequest> request) {
+		Instant receivedAt = Instant.now();
+		List<GameEvent> events = request.stream().map(r -> GameEvent.from(r, receivedAt)).toList();
+		ex.execute(() -> ts.saveEvents(events));
 	}
 
 }

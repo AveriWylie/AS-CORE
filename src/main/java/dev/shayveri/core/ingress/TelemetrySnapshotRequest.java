@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Positive;
  * A1 - the exact shape of POST /api/telemetry's JSON body. This IS the
  * contract with the Roblox-side Luau script; the plan fixes these names.
  * We use this as a base validation layer so telemetry snapshot request is
- * just whatwe recieve tpo validate before any use and document making.
+ * just what we recieve to validate before any use and document making.
  *
  * The components are declared (the contract is given); what is left to you
  * is the VALIDATION - the annotations that make bad payloads impossible to
@@ -23,20 +23,10 @@ import jakarta.validation.constraints.Positive;
  *   Jakarta Validation   - the annotations below, package jakarta.validation
  *                          .constraints.*. They do nothing on their own; they
  *                          fire when the controller (A8) marks the parameter
- *                          @Valid, and failures surface as
+ *                          {@code @Valid}, and failures surface as
  *                          MethodArgumentNotValidException -> handled by C2.
  *
- * TODO(averi): add validation annotations directly above each component:
- *   placeId       @NotBlank          (import jakarta.validation.constraints.NotBlank)
- *                                    - null, "", and "   " all rejected
- *   jobId         @NotBlank
- *   playerCount   @NotNull @Min(0)   - required, and never negative
- *   serverFps     @NotNull @Positive - required, and zero/negative is nonsense
- *   round         (no annotation - free-form, optional)
- *   customMetrics (no annotation - optional)
- *
- * TODO(averi, second): add a COMPACT CONSTRUCTOR to default customMetrics
- * to an empty map so no downstream code ever null-checks it:
+ * Below where applicable; to an empty map so no downstream code ever null-checks it:
  *
  *   public TelemetrySnapshotRequest {
  *       customMetrics = (customMetrics == null) ? Map.of() : customMetrics;
@@ -78,7 +68,6 @@ public record TelemetrySnapshotRequest(
 
 	// difference in indentation is conventional for looks above
 	// as its too long for horizontal we list them not at code
-	public TelemetrySnapshotRequest {
-		customMetrics = customMetrics == null ? Map.of() : customMetrics;
-	}
+	public TelemetrySnapshotRequest {customMetrics = customMetrics == null ? Map.of() : customMetrics;}
+
 }

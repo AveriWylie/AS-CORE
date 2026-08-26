@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Compute-Density Research — Data Log</title>
+<title>Compute-Density Research - Data Log</title>
 <style>
   :root{
     --bg:#ffffff; --fg:#1a1a1a; --muted:#6b6b6b; --line:#e2e2e2; --card:#f7f7f7;
@@ -67,20 +67,20 @@
 <body>
 <div class="dash">
   <header class="hd">
-    <div class="hd-title">Compute-Density Research — Data Log</div>
-    <div class="hd-sub">What's been logged, what's still open — a view for choosing the next run to feed the flow.</div>
+    <div class="hd-title">Compute-Density Research - Data Log</div>
+    <div class="hd-sub">What's been logged, what's still open - a view for choosing the next run to feed the flow.</div>
     <div class="src">Data source: <code>claude-usage-guide.txt</code> · iteration 6 · this page shows the logged research only.</div>
   </header>
 
   <section class="block">
     <div class="block-h">Data collected so far <span class="badge b-done">6 iterations</span></div>
     <div>
-      <div class="it"><div class="it-n">1</div><div><div class="it-t">Production run — documentation task</div><div class="it-d">6 blueprints + guide, 7 files, ~950 lines, 1 session, 0 context reloads. Finding: pattern amortization (L1) is the whole savings story.</div></div></div>
+      <div class="it"><div class="it-n">1</div><div><div class="it-t">Production run - documentation task</div><div class="it-d">6 blueprints + guide, 7 files, ~950 lines, 1 session, 0 context reloads. Finding: pattern amortization (L1) is the whole savings story.</div></div></div>
       <div class="it"><div class="it-n">2</div><div><div class="it-t">Break-report</div><div class="it-d">2 architectural breaks found + resolved (introspection blind spot; no self-certification).</div></div></div>
       <div class="it"><div class="it-n">3</div><div><div class="it-t">Temporal model defined</div><div class="it-d">τ = R+O (proper-time), k = τ/T&#8341; (shrink factor), ρ = R/O (density). Duration and intensity are independent axes.</div></div></div>
       <div class="it"><div class="it-n">4</div><div><div class="it-t">Necessary conclusion</div><div class="it-d">Human↔LLM comparison is forced to be an external-behavioral science (no introspection transfers).</div></div></div>
       <div class="it"><div class="it-n">5</div><div><div class="it-t">Scope pinned</div><div class="it-d">Measured axes = focus modes + performance per mode; safety is definitional (low-stakes task choice).</div></div></div>
-      <div class="it"><div class="it-n">6</div><div><div class="it-t">Arm A — code-scaffold task, focus swept by size</div><div class="it-d">22 files across 6 modules; output volume + reasoning depth scaled monotonically with focus. Confound: size and focus moved together by design.</div></div></div>
+      <div class="it"><div class="it-n">6</div><div><div class="it-t">Arm A - code-scaffold task, focus swept by size</div><div class="it-d">22 files across 6 modules; output volume + reasoning depth scaled monotonically with focus. Confound: size and focus moved together by design.</div></div></div>
     </div>
   </section>
 
@@ -94,7 +94,7 @@
   </section>
 
   <section class="block">
-    <div class="block-h">Arm A result — density (ρ) by focus <span class="badge b-done">proxy · relative</span></div>
+    <div class="block-h">Arm A result - density (ρ) by focus <span class="badge b-done">proxy · relative</span></div>
     <div class="res">
       <div class="res-row"><span class="res-lab"><b>L1</b> egress</span><span class="res-bar"><span class="res-fill" style="width:21%"></span></span><span class="res-val">0.29</span></div>
       <div class="res-row"><span class="res-lab"><b>L3</b> observ.</span><span class="res-bar"><span class="res-fill" style="width:78%"></span></span><span class="res-val">1.10</span></div>
@@ -102,15 +102,15 @@
       <div class="res-row"><span class="res-lab"><b>L6</b> nodes</span><span class="res-bar"><span class="res-fill" style="width:97%"></span></span><span class="res-val">1.37</span></div>
       <div class="res-row"><span class="res-lab"><b>L7</b> jobs</span><span class="res-bar"><span class="res-fill" style="width:100%"></span></span><span class="res-val">1.41</span></div>
     </div>
-    <div class="note">ρ-proxy = doc lines / code lines; τ-proxy (total lines) 35→215. Density rises with focus, 0.29→1.41 (~5&times;). One honest inversion: L3 &gt; L5. This is <b>expressed</b> reasoning, not tokens — pending dashboard validation.</div>
+    <div class="note">ρ-proxy = doc lines / code lines; τ-proxy (total lines) 35→215. Density rises with focus, 0.29→1.41 (~5&times;). One honest inversion: L3 &gt; L5. This is <b>expressed</b> reasoning, not tokens - pending dashboard validation.</div>
   </section>
 
   <section class="block">
-    <div class="block-h">Open — candidate next runs to log more data <span class="badge b-open">pick one to feed the flow</span></div>
+    <div class="block-h">Open - candidate next runs to log more data <span class="badge b-open">pick one to feed the flow</span></div>
     <div class="runs">
-      <div class="run"><div class="run-t">Arm B — constant size, focus swept</div><div class="run-adds">Holds module size fixed, varies focus alone. <b>Adds:</b> isolates ρ from size — the missing half of iteration 6's confound. <i>Defined, not yet run.</i></div></div>
-      <div class="run"><div class="run-t">Refactor task</div><div class="run-adds">Mechanical, code-touching. <b>Adds:</b> a different environment at similar complexity — tests whether findings hold off documentation.</div></div>
-      <div class="run"><div class="run-t">Debugging task</div><div class="run-adds">Novelty-dense, can't be templated. <b>Adds:</b> a high-ρ point where amortization can't help — the opposite end of the curve.</div></div>
+      <div class="run"><div class="run-t">Arm B - constant size, focus swept</div><div class="run-adds">Holds module size fixed, varies focus alone. <b>Adds:</b> isolates ρ from size - the missing half of iteration 6's confound. <i>Defined, not yet run.</i></div></div>
+      <div class="run"><div class="run-t">Refactor task</div><div class="run-adds">Mechanical, code-touching. <b>Adds:</b> a different environment at similar complexity - tests whether findings hold off documentation.</div></div>
+      <div class="run"><div class="run-t">Debugging task</div><div class="run-adds">Novelty-dense, can't be templated. <b>Adds:</b> a high-ρ point where amortization can't help - the opposite end of the curve.</div></div>
       <div class="run"><div class="run-t">Smaller-model run (L4 test)</div><div class="run-adds">Same blueprint task, lighter model. <b>Adds:</b> whether a cheaper model is the token-efficient equal on routine work.</div></div>
       <div class="run"><div class="run-t">Token ground-truth check</div><div class="run-adds">Compare logged estimates vs the billing dashboard. <b>Adds:</b> external validation of every τ/ρ figure logged so far.</div></div>
     </div>

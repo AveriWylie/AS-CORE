@@ -16,7 +16,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
  * Consumes: @Document("config_versions"), @Id, @Indexed on (placeId, namespace).
  *
  * TODO(averi): fields (all final, constructor-only):
- *   @Id String id; String placeId (null = global); String namespace; int version (monotonic per
+ *   {@code @Id} String id; String placeId (null = global); String namespace; int version (monotonic per
  *   placeId+namespace); Map<String,Object> values; String savedBy (api key LABEL - the audit seed);
  *   Instant savedAt. Constructor sets everything; getters only; NO setter, ever.
  */

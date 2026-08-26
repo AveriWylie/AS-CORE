@@ -6,6 +6,19 @@ spring:
   threads.virtual.enabled: true
 
 shayveri:
+  # Storage backend for TelemetryStore. "asdb" selects AsdbTelemetryStore,
+  # "mongo" (or omitting this entirely) selects MongoTelemetryStore. Exactly
+  # one is created; see the @ConditionalOnProperty pair on those two classes.
+  #
+  # asdb needs its server running, and the TTL flag is NOT optional: the
+  # @Indexed(expireAfter = "7d") on TelemetrySnapshot.receivedAt is documentation
+  # on this side, and the sweeper on the server is what enforces it. Omit the
+  # flag and telemetry_snapshots grows forever without any error.
+  #
+  #   asdb telemetry.db --port 7070 --ttl telemtry_snapshots.receivedAt=7d
+  #
+  # Switch back with: --shayveri.store=mongo
+  store: asdb
   security:
     api-keys:
       roblox: ${SHAYVERI_KEY_ROBLOX:dev-roblox-key}
@@ -18,3 +31,17 @@ shayveri:
 
 management:
   endpoints.web.exposure.include: health,metrics,prometheus
+  health:
+    # Spring Boot contributes a health indicator for every datastore it
+    # auto-configures. With shayveri.store=asdb, MongoDB has NO consumers left
+    # (its only one was MongoTelemetryStore, which the conditional switches
+    # off), so its indicator reported DOWN for a database nothing was using and
+    # dragged /actuator/health to DOWN with it. An orchestrator probing that
+    # would restart-loop a perfectly healthy application.
+    #
+    # Redis is deliberately NOT disabled: RedisQueueStore and
+    # RedisHeartbeatStore are live beans, so Redis being down is a TRUE signal.
+    #
+    # Turn this back on when something uses Mongo again, which means either
+    # shayveri.store=mongo or the J5 MongoJobStore landing.
+    mongo.enabled: false

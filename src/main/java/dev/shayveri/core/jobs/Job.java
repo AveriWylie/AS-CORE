@@ -20,7 +20,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
  * external identity), @Indexed on status and mapId (the two filters GET /api/jobs requires).
  *
  * TODO(averi): fields @Id String id; JobType type; String mapId; int priority; Map payload;
- * @Indexed JobStatus status; String claimedBy; int attempts; int maxRetries;
+ * {@code @Indexed} JobStatus status; String claimedBy; int attempts; int maxRetries;
  * Instant createdAt/claimedAt/startedAt/finishedAt; String resultRef; Map resultMeta; String
  * lastError. Constructor for creation (status QUEUED, attempts 0); getters; controlled mutators
  * only for the lifecycle transitions JobService drives.

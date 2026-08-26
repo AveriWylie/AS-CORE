@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  *       "convert" = Jackson serializes payload to JSON; "send" = every
  *       client subscribed to that destination receives it.
  *
- *   @Component - Spring DI, as in A6.
+ *   {@code @Component} - Spring DI, as in A6.
  *
  * Object is Java's universal type. Every class in Java implicitly extends
  * Object, TelemetrySnapshot, GameEvent, a node-status object, a job-progress
@@ -55,7 +55,7 @@ public class StompRealtimePublisher implements RealtimePublisher {
 
     private final SimpMessagingTemplate messagingTemplate;
 
-    // See spring simp messaging template online or through ai tools
+    // See spring simp messaging template
     public StompRealtimePublisher(SimpMessagingTemplate messagingTemplate) {
         this.messagingTemplate = messagingTemplate;
     }

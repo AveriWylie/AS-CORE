@@ -16,12 +16,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * errors, never 500."
  *
  * Consumes (not ours):
- *   @RestControllerAdvice  - Spring Web. Marks this class as a global
+ *   {@code @RestControllerAdvice}  - Spring Web. Marks this class as a global
  *                            interceptor: when ANY controller throws, Spring
  *                            looks here for a matching @ExceptionHandler
  *                            before writing the response. No controller ever
  *                            catches its own errors.
- *   @ExceptionHandler(X.class)
+ *   {@code @ExceptionHandler}(X.class)
  *                          - "when exception type X escapes a controller,
  *                            call this method instead of crashing."
  *   MethodArgumentNotValidException
