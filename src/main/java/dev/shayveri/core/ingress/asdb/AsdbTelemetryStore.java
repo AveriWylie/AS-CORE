@@ -2,6 +2,7 @@ package dev.shayveri.core.ingress.asdb;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -65,26 +66,55 @@ import dev.shayveri.core.ingress.TelemetryStore;
  * behind a mutex, so concurrent telemetry posts queue rather than run in
  * parallel.</li>
  * </ul>
+ *
+ * <p>TWO TRANSPORTS, ONE STORE. asdb speaks HTTP on one port and ABP/1, its
+ * binary protocol, on another, from the same process against the same database.
+ * {@code shayveri.store.asdb.protocol} selects which this store uses and
+ * defaults to {@code binary}, because measured against the same database a
+ * single insert costs 68.82us over HTTP and 20.13us over ABP, and a batch of
+ * 100 costs 1.55us per document, which is 44x the HTTP path.
+ * {@code saveEvents} sends batches, so it lands on that row. Set the property
+ * to {@code http} to fall back; the numbers and the method are in asdb's
+ * PROTOCOL.txt.
  */
 @Component
 @ConditionalOnProperty(name = "shayveri.store", havingValue = "asdb")
 public class AsdbTelemetryStore implements TelemetryStore {
 
 	private static final Logger log = LoggerFactory.getLogger(AsdbTelemetryStore.class);
-	private final AsdbClient client;
-	private final String url;
+	private final Transport transport;
+	private final String endpoint;
 
 	public AsdbTelemetryStore(@Value("${shayveri.store.asdb.url:http://127.0.0.1:7070}") String url,
+							  @Value("${shayveri.store.asdb.abp-host:127.0.0.1}") String abpHost,
+							  @Value("${shayveri.store.asdb.abp-port:7071}") int abpPort,
+							  @Value("${shayveri.store.asdb.protocol:binary}") String protocol,
+							  @Value("${shayveri.store.asdb.max-idle-connections:8}") int maxIdle,
 							  @Value("${shayveri.store.asdb.connect-timeout-ms:2000}") long connectTimeoutMs,
 							  @Value("${shayveri.store.asdb.request-timeout-ms:5000}") long requestTimeoutMs) {
 
-		this.url = url;
-		this.client = new AsdbClient(url, Duration.ofMillis(connectTimeoutMs), Duration.ofMillis(requestTimeoutMs));
+		Duration connectTimeout = Duration.ofMillis(connectTimeoutMs);
+		Duration requestTimeout = Duration.ofMillis(requestTimeoutMs);
+
+		if ("http".equalsIgnoreCase(protocol)) {
+			this.endpoint = url;
+			this.transport = new HttpTransport(new AsdbClient(url, connectTimeout, requestTimeout));
+		} else {
+			// Anything not explicitly "http" is binary. An unrecognised value
+			// choosing the FASTER path rather than silently degrading is the
+			// safe direction to be wrong in: a typo costs nothing, whereas a
+			// typo that quietly halved throughput would go unnoticed for months.
+			this.endpoint = "abp://" + abpHost + ":" + abpPort;
+			this.transport = new BinaryTransport(new AsdbBinaryClient(abpHost, abpPort, connectTimeout, requestTimeout, maxIdle));
+		}
+
 		ensureSchema();
 	}
 
 	@Override
-	public void saveSnapshot(TelemetrySnapshot snapshot) {client.execute(AsdbEntityMapper.insertStatement(snapshot));}
+	public void saveSnapshot(TelemetrySnapshot snapshot) {
+		transport.insert(AsdbEntityMapper.collectionOf(TelemetrySnapshot.class), List.of(snapshot));
+	}
 
 	@Override
 	public void saveEvents(List<GameEvent> events) {
@@ -95,7 +125,62 @@ public class AsdbTelemetryStore implements TelemetryStore {
 			return;
 		}
 
-		client.execute(AsdbEntityMapper.insertStatement(events));
+		transport.insert(AsdbEntityMapper.collectionOf(GameEvent.class), events);
+	}
+
+	/**
+	 * The two ways to reach asdb, behind one method each.
+	 *
+	 * <p>Kept as a seam for the same reason {@code TelemetryStore} is one: the
+	 * code above it should not know or care which wire format is in use, and
+	 * having both paths implement one interface is what stops them drifting
+	 * into different behaviour. Both must accept the same entities and store
+	 * the same documents; {@code AsdbTransportParityTest} is what enforces it.
+	 */
+	private interface Transport {
+
+		void insert(String collection, List<?> entities);
+
+		/** One ASL statement, used for startup DDL. */
+		void ddl(String statement);
+
+		boolean healthy();
+	}
+
+	/** ASL text over HTTP. The original path, kept as the fallback and for curl parity. */
+	private record HttpTransport(AsdbClient client) implements Transport {
+
+		@Override
+		public void insert(String collection, List<?> entities) {
+			client.execute(AsdbEntityMapper.insertStatement(collection, entities));
+		}
+
+		@Override
+		public void ddl(String statement) {client.execute(statement);}
+
+		@Override
+		public boolean healthy() {return client.isHealthy();}
+	}
+
+	/** Binary documents over ABP/1. Values are never lexed, so nothing needs escaping. */
+	private record BinaryTransport(AsdbBinaryClient client) implements Transport {
+
+		@Override
+		public void insert(String collection, List<?> entities) {
+
+			List<Map<String, Object>> docs = entities.stream()
+					.map(AsdbEntityMapper::toMap)
+					.map(m -> (Map<String, Object>) m)
+					.toList();
+
+			client.insert(collection, docs);
+		}
+
+		@Override
+		public void ddl(String statement) {client.execute(statement);}
+
+		@Override
+		public boolean healthy() {return client.isHealthy();}
 	}
 
 	/**
@@ -123,11 +208,11 @@ public class AsdbTelemetryStore implements TelemetryStore {
 		 * exists). A dead database and a normal restart looked identical,
 		 * which is the worst possible pair of things to conflate.
 		 */
-		if (!client.isHealthy()) {
-			log.error("asdb is UNREACHABLE. Telemetry writes will fail until it is running. "
-					+ "Start it with: asdb telemetry.db --port 7070 "
+		if (!transport.healthy()) {
+			log.error("asdb is UNREACHABLE at {}. Telemetry writes will fail until it is running. "
+					+ "Start it with: asdb telemetry.db --port 7070 --abp-port 7071 "
 					+ "--ttl telemtry_snapshots.receivedAt=7d   "
-					+ "(or set shayveri.store=mongo to use MongoDB instead)");
+					+ "(or set shayveri.store=mongo to use MongoDB instead)", endpoint);
 			return;
 		}
 
@@ -139,7 +224,7 @@ public class AsdbTelemetryStore implements TelemetryStore {
 			}
 		}
 
-		log.info("asdb schema ready at {}", url);
+		log.info("asdb schema ready at {}", endpoint);
 	}
 
 	/*
@@ -150,12 +235,12 @@ public class AsdbTelemetryStore implements TelemetryStore {
 	 */
 	private void attempt(String statement) {
 		try {
-			client.execute(statement);
+			transport.ddl(statement);
 		} catch (AsdbClient.AsdbException e) {
 			log.debug("asdb schema step skipped ({}): {}", statement, e.getMessage());
 		}
 	}
 
 	/** Exposed so a health indicator or a test can check the server is reachable. */
-	public boolean isHealthy() {return client.isHealthy();}
+	public boolean isHealthy() {return transport.healthy();}
 }

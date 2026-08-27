@@ -119,7 +119,27 @@ public final class AsdbEntityMapper {
 			throw new IllegalArgumentException("no entities to insert");
 		}
 
-		String collection = collectionOf(entities.get(0).getClass());
+		return insertStatement(collectionOf(entities.get(0).getClass()), entities);
+	}
+
+	/**
+	 * The same statement with the collection given explicitly.
+	 *
+	 * <p>Exists so the text path can honour a caller-supplied collection the way
+	 * the binary path always has. Without it the two transports had different
+	 * behaviour behind one interface: {@code OP_INSERT} names its collection on
+	 * the wire, while the text path derived it from {@code @Document} and
+	 * silently ignored whatever it was handed. Harmless in production, since the
+	 * store passes the annotation-derived name anyway, but a signature that
+	 * promises something one implementation ignores is a trap for the next
+	 * caller. A parity test found it, which is the argument for having one.
+	 */
+	public static String insertStatement(String collection, List<?> entities) {
+
+		if (entities.isEmpty()) {
+			throw new IllegalArgumentException("no entities to insert");
+		}
+
 		// Batch insert is BRACKETED: insert [ {...}, {...} ]. The unbracketed
 		// comma form parses as a single document followed by trailing tokens,
 		// which fails. asl.txt spells this out; it is worth restating because
@@ -134,6 +154,52 @@ public final class AsdbEntityMapper {
 		}
 
 		return out.append("]").toString();
+	}
+
+	/**
+	 * An entity as a field map, by reflection over its declared fields.
+	 *
+	 * <p>This is {@link #documentLiteral} with the text rendering removed. The
+	 * binary protocol needs the same fields under the same names but must NOT
+	 * have them turned into ASL syntax first, since the whole point of
+	 * {@code OP_INSERT} is that values never become syntax. Both paths share
+	 * this traversal so a field skipped by one cannot be included by the other.
+	 *
+	 * <p>LinkedHashMap rather than HashMap: declaration order is stable, which
+	 * keeps the encoded bytes stable, which is what lets a test assert on them.
+	 * asdb sorts keys on its own way out, so nothing downstream depends on this
+	 * order; it exists to make the encoding reproducible on this side.
+	 */
+	public static java.util.LinkedHashMap<String, Object> toMap(Object entity) {
+
+		java.util.LinkedHashMap<String, Object> map = new java.util.LinkedHashMap<>();
+
+		for (Field field : entity.getClass().getDeclaredFields()) {
+			// static and synthetic fields are not data: the latter appear on
+			// inner classes and in coverage-instrumented builds ($jacocoData).
+			if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {
+				continue;
+			}
+
+			field.setAccessible(true);
+			Object value;
+
+			try {
+				value = field.get(entity);
+			} catch (IllegalAccessException e) {
+				throw new AsdbClient.AsdbException("cannot read field " + field.getName(), e);
+			}
+
+			// A null @Id is omitted rather than written as null, matching the
+			// text path: asdb generates no ids, so the field would be dead weight.
+			if (value == null && field.isAnnotationPresent(Id.class)) {
+				continue;
+			}
+
+			map.put(field.getName(), value);
+		}
+
+		return map;
 	}
 
 	/** An entity as an ASL document literal, by reflection over its declared fields. */
