@@ -1,0 +1,53 @@
+The asdb folder is the translator between Spring and your Rust database. Four classes, 666 lines, plus 392 lines of
+tests. Nothing else in the codebase imports it, it plugs in behind TelemetryStore and is invisible above that line.
+
+Each one does exactly one job, and they stack:
+
+TelemetryService  →  TelemetryStore (interface)
+                          ↓
+             ┌── AsdbTelemetryStore ────────── the plug
+             │        uses ↓
+             ├── AsdbEntityMapper ──────────── Java object → ASL text
+             │        then ↓
+             └── AsdbClient ───────────────────  ASL text → HTTP → asdb
+
+                 AsdbHealthIndicator ────────── reports reachability
+
+AsdbTelemetryStore (163) is the plug. The only class that implements TelemetryStore, so it's the only one
+Spring can inject. Two real methods:
+
+saveSnapshot(TelemetrySnapshot)  → mapper → client
+saveEvents(List<GameEvent>)      → mapper → client   (empty list = no-op)
+
+Its constructor also runs ensureSchema() once at startup, creating collections and @Indexed indexes, because
+Mongo does both implicitly and asdb does neither. That method checks health first, so an unreachable server logs
+a loud ERROR instead of six benign-looking "skipped" lines.
+
+AsdbEntityMapper (346), this is the the heart, and the largest for a reason. Converts a Java object into ASL text
+by reflection:
+
+collectionOf(Class)      reads @Document      → "telemtry_snapshots"
+indexedFieldsOf(Class)   reads @Indexed       → ["placeId"]
+insertStatement(entity)  → from telemtry_snapshots | insert { ... }
+insertStatement(List)    → from game_events | insert [ {...}, {...} ]
+
+It's final with a private constructor, pure functions, no state, so its tests need no server and no Spring.
+
+Most of its size is the careful parts: quote() is the injection boundary (a placeId of x" } | delete // must
+store as data, not execute), and backtick() handles customMetrics keys that collide with ASL keywords like order.
+Both are package-private so every caller has to go through insertStatement.
+
+AsdbClient (114), java.net.http, so no new dependency and no driver. execute(statement) POSTs to
+/query and throws AsdbException on non-2xx. It deliberately doesn't parse the response, the store only needs to know
+the write succeeded, and adding a JSON parser to read a field nobody consumes would be work with no caller.
+
+AsdbHealthIndicator (43), Puts asdb into /actuator/health. Exists because Spring contributes a health
+check for every datastore it auto-configures, so Mongo and Redis appeared while the store actually serving traffic did
+not.
+
+Why it's shaped this way: each layer only knows the one below it. The mapper doesn't know HTTP exists; the client
+doesn't know what an entity is; the store doesn't know ASL syntax. That's why the mapper is testable with 13 pure string
+tests, and why fixing the batch-insert bracket bug touched one method.
+
+Note all four carry @ConditionalOnProperty(havingValue = "asdb"), including the health indicator, so a health check for
+a switched-off backend doesn't linger.

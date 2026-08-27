@@ -4,6 +4,8 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.MediaType;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.testcontainers.DockerClientFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -49,6 +51,26 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Enable each test (remove @Disabled) as its units land. Suggested order
  * follows the blueprint's build order.
  */
+/*
+ * SKIP, do not fail, when there is no container runtime.
+ *
+ * Testcontainers starts a real MongoDB in Docker, so without a daemon this
+ * whole class dies with initializationError and the suite is permanently red.
+ * A suite that always fails trains you to ignore it, which costs more than the
+ * coverage this class provides.
+ *
+ * @EnabledIf rather than an assumption in @BeforeAll: the Testcontainers
+ * extension starts @Container fields in its own beforeAll callback, which runs
+ * BEFORE any @BeforeAll method, so an assumption there never gets the chance to
+ * fire. @EnabledIf is an ExecutionCondition, evaluated before extensions
+ * initialise anything.
+ *
+ * Nothing is disabled permanently: install Docker (or `colima start`) and these
+ * run again on the next `./gradlew test` with no code change. This is also the
+ * ONLY thing in the project needing Docker; the asdb tests talk to a native
+ * binary and need no container runtime.
+ */
+@EnabledIf("dockerAvailable")
 @Testcontainers
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -57,6 +79,15 @@ class Module1IntegrationTest {
 	@Container
 	@ServiceConnection
 	static MongoDBContainer mongo = new MongoDBContainer("mongo:7");
+
+	static boolean dockerAvailable() {
+		try {
+			return DockerClientFactory.instance().isDockerAvailable();
+		} catch (Throwable t) {
+			return false;
+		}
+	}
+
 
 	@Autowired
 	MockMvc mockMvc;

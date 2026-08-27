@@ -34,21 +34,24 @@ class HealthReportsTheActiveStoreTest {
 	@Test
 	@DisplayName("asdb appears in health, and Mongo does not while unused")
 	void healthReportsTheStoreInUse() {
-		String components = health.health().toString()
-				+ " " + String.join(",", healthComponentNames());
+
+		String components = health.health().toString() + " " + String.join(",", healthComponentNames());
 
 		assertTrue(components.toLowerCase().contains("asdb"),
 				"the active store must appear in /actuator/health, got: " + components);
+
 		assertFalse(components.toLowerCase().contains("mongo"),
-				"Mongo has no consumers under shayveri.store=asdb and must not be "
-						+ "reported, got: " + components);
+				"Mongo has no consumers under shayveri.store=asdb and must not be " + "reported, got: " + components);
 	}
 
 	private java.util.Set<String> healthComponentNames() {
+
 		var h = health.health();
+
 		if (h instanceof org.springframework.boot.actuate.health.CompositeHealth composite) {
 			return composite.getComponents().keySet();
 		}
+
 		return java.util.Set.of();
 	}
 }

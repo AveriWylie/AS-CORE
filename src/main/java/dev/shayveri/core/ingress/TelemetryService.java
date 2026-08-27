@@ -16,18 +16,17 @@ import org.springframework.beans.factory.annotation.Qualifier;
  * Consumes (not ours):
  *   {@code @Service} - Spring DI (same as @Component, the name signals "logic lives
  *       here").
- *   Executor (java.util.concurrent) - one method: execute(Runnable). The
+ *   Executor (java.util.concurrent), one method: execute(Runnable). The
  *       bean injected is AsyncConfig's virtual-thread executor. Calling
  *       executor.execute(() -> { ... }) returns IMMEDIATELY; the lambda
  *       runs on its own virtual thread.
  *
- * Depends on (ours): TelemetryStore (A5), RealtimePublisher (B1) - note
+ * Depends on (ours): TelemetryStore (A5), RealtimePublisher (B1), note
  * this class imports the INTERFACES, never MongoTelemetryStore or
  * StompRealtimePublisher. Spring injects the implementations.
  *
  * Done when: D5 passes - the controller's 202 does not wait on storage.
  */
-
 @Service
 public class TelemetryService {
 

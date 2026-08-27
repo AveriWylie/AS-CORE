@@ -77,8 +77,7 @@ public class AsdbClient {
 		int status = response.statusCode();
 
 		if (status < 200 || status >= 300) {
-			throw new AsdbException(
-					"asdb returned " + status + ": " + response.body() + "  (statement: " + statement + ")");
+			throw new AsdbException("asdb returned " + status + ": " + response.body() + "  (statement: " + statement + ")");
 		}
 
 		return response.body();
@@ -108,12 +107,8 @@ public class AsdbClient {
 	/** Unchecked so it matches the Spring Data repository style the rest of the ingress code uses. */
 	public static class AsdbException extends RuntimeException {
 
-		public AsdbException(String message) {
-			super(message);
-		}
+		public AsdbException(String message) {super(message);}
 
-		public AsdbException(String message, Throwable cause) {
-			super(message, cause);
-		}
+		public AsdbException(String message, Throwable cause) {super(message, cause);}
 	}
 }

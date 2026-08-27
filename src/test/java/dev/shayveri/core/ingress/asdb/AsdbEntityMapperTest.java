@@ -65,8 +65,7 @@ class AsdbEntityMapperTest {
 	@Test
 	@DisplayName("the statement targets the right collection and stage")
 	void statementShape() {
-		assertTrue(AsdbEntityMapper.insertStatement(snapshot())
-				.startsWith("from telemtry_snapshots | insert { "));
+		assertTrue(AsdbEntityMapper.insertStatement(snapshot()).startsWith("from telemtry_snapshots | insert { "));
 	}
 
 	@Test
@@ -113,7 +112,6 @@ class AsdbEntityMapperTest {
 		 */
 		String hostile = "x\" } | delete //";
 		String literal = AsdbEntityMapper.quote(hostile);
-
 		// exactly one opening and one closing quote: the payload's own quote is escaped
 		assertTrue(literal.startsWith("\"") && literal.endsWith("\""), literal);
 		assertTrue(literal.contains("\\\""), "the embedded quote must be escaped: " + literal);

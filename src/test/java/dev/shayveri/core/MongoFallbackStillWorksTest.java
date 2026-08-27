@@ -27,7 +27,7 @@ class MongoFallbackStillWorksTest {
 	@Test
 	@DisplayName("shayveri.store=mongo selects the Mongo implementation")
 	void mongoIsSelectable() {
-		assertInstanceOf(MongoTelemetryStore.class, store,
-				"the fallback must still resolve, got " + store.getClass().getName());
+		assertInstanceOf(MongoTelemetryStore.class, store, "the fallback must still resolve, got "
+				+ store.getClass().getName());
 	}
 }

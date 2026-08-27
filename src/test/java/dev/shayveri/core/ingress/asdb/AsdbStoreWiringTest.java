@@ -30,10 +30,7 @@ import dev.shayveri.core.ingress.TelemetryStore;
  * isn't one, so the suite stays green on a machine without it.
  */
 @SpringBootTest
-@TestPropertySource(properties = {
-		"shayveri.store=asdb",
-		"shayveri.store.asdb.url=http://127.0.0.1:7070",
-})
+@TestPropertySource(properties = {"shayveri.store=asdb", "shayveri.store.asdb.url=http://127.0.0.1:7070",})
 class AsdbStoreWiringTest {
 
 	@Autowired
@@ -42,27 +39,24 @@ class AsdbStoreWiringTest {
 	@Test
 	@DisplayName("shayveri.store=asdb selects the asdb implementation")
 	void theAsdbStoreIsWiredIn() {
-		assertInstanceOf(AsdbTelemetryStore.class, store,
-				"expected the asdb backend, got " + store.getClass().getName());
+		assertInstanceOf(AsdbTelemetryStore.class, store, "expected the asdb backend, got " + store.getClass().getName());
 	}
 
 	@Test
 	@DisplayName("a snapshot written through the Spring bean lands in asdb")
 	void snapshotRoundTrips() {
+
 		AsdbTelemetryStore asdb = assertInstanceOf(AsdbTelemetryStore.class, store);
 		assumeTrue(asdb.isHealthy(), "no asdb server on 127.0.0.1:7070");
-
 		String marker = "wiring-" + System.nanoTime();
+
 		store.saveSnapshot(new TelemetrySnapshot(
 				marker, "job-wiring", 7, 59.5, "r1",
 				Map.of("kills", 3),
 				Instant.now()));
 
-		AsdbClient client = new AsdbClient("http://127.0.0.1:7070",
-				java.time.Duration.ofSeconds(2), java.time.Duration.ofSeconds(5));
-		String body = client.execute(
-				"from telemtry_snapshots | where placeId == \"" + marker + "\" | select jobId, playerCount");
-
+		AsdbClient client = new AsdbClient("http://127.0.0.1:7070", java.time.Duration.ofSeconds(2), java.time.Duration.ofSeconds(5));
+		String body = client.execute("from telemtry_snapshots | where placeId == \"" + marker + "\" | select jobId, playerCount");
 		assertEquals("{\"count\":1,\"documents\":[{\"jobId\":\"job-wiring\",\"playerCount\":7}]}", body);
 	}
 

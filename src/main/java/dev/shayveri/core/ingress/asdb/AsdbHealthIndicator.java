@@ -29,9 +29,7 @@ public class AsdbHealthIndicator implements HealthIndicator {
 
 	private final AsdbTelemetryStore store;
 
-	public AsdbHealthIndicator(AsdbTelemetryStore store) {
-		this.store = store;
-	}
+	public AsdbHealthIndicator(AsdbTelemetryStore store) {this.store = store;}
 
 	@Override
 	public Health health() {

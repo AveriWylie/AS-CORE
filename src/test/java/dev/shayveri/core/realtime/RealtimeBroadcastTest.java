@@ -42,7 +42,6 @@ class RealtimeBroadcastTest {
 
 	@Disabled("TODO(averi): implement per the class comment once B2, B3, and A7 exist")
 	@Test
-	void snapshotArrivesOnItsPlaceTopicOnly() {
-	}
+	void snapshotArrivesOnItsPlaceTopicOnly() { }
 
 }

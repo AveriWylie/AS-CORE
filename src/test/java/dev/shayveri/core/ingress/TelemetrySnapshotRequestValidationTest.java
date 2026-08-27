@@ -49,6 +49,7 @@ class TelemetrySnapshotRequestValidationTest {
 	@Disabled("TODO(averi): enable after A1 annotations are in")
 	@Test
 	void missingPlaceIdIsRejectedAndNamed() {
+
 		var request = new TelemetrySnapshotRequest(
 				null,          // placeId - the broken field under test
 				"job-123",

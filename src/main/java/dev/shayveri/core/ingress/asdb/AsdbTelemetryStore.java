@@ -77,14 +77,14 @@ public class AsdbTelemetryStore implements TelemetryStore {
 	public AsdbTelemetryStore(@Value("${shayveri.store.asdb.url:http://127.0.0.1:7070}") String url,
 							  @Value("${shayveri.store.asdb.connect-timeout-ms:2000}") long connectTimeoutMs,
 							  @Value("${shayveri.store.asdb.request-timeout-ms:5000}") long requestTimeoutMs) {
+
 		this.url = url;
-		this.client = new AsdbClient(url, Duration.ofMillis(connectTimeoutMs), Duration.ofMillis(requestTimeoutMs)); ensureSchema();
+		this.client = new AsdbClient(url, Duration.ofMillis(connectTimeoutMs), Duration.ofMillis(requestTimeoutMs));
+		ensureSchema();
 	}
 
 	@Override
-	public void saveSnapshot(TelemetrySnapshot snapshot) {
-		client.execute(AsdbEntityMapper.insertStatement(snapshot));
-	}
+	public void saveSnapshot(TelemetrySnapshot snapshot) {client.execute(AsdbEntityMapper.insertStatement(snapshot));}
 
 	@Override
 	public void saveEvents(List<GameEvent> events) {
@@ -157,7 +157,5 @@ public class AsdbTelemetryStore implements TelemetryStore {
 	}
 
 	/** Exposed so a health indicator or a test can check the server is reachable. */
-	public boolean isHealthy() {
-		return client.isHealthy();
-	}
+	public boolean isHealthy() {return client.isHealthy();}
 }

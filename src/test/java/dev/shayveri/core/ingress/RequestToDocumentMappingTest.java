@@ -39,13 +39,11 @@ class RequestToDocumentMappingTest {
     @Disabled("enable once A3 TelemetrySnapshot compiles with these getter names")
     @Test
     void snapshotFromCopiesEveryFieldAndStampsReceivedAt() {
-        // arrange: a fully-populated request + a server receipt time
-        Instant received = Instant.parse("2026-07-08T12:00:00Z");
-        var request = new TelemetrySnapshotRequest(
-                "8271", "job-1", 12, 58.5, "round-4", Map.of("zombies", 30));
 
-        // act: the conversion under test
-        var doc = TelemetrySnapshot.from(request, received);
+        Instant received = Instant.parse("2026-07-08T12:00:00Z"); // arrange: a fully-populated request + a server receipt time
+
+        var request = new TelemetrySnapshotRequest("8271", "job-1", 12, 58.5, "round-4", Map.of("zombies", 30));
+        var doc = TelemetrySnapshot.from(request, received); // act: the conversion under test
 
         // assert: every field mapped through, plus the server field
         assertEquals("8271", doc.getPlaceId());
@@ -54,8 +52,8 @@ class RequestToDocumentMappingTest {
         assertEquals(58.5, doc.getServerFps());
         assertEquals("round-4", doc.getRound());
         assertEquals(Map.of("zombies", 30), doc.getCustomMetrics());
-        assertEquals(received, doc.getReceivedAt());   // stamped by CORE, not client
-        assertNull(doc.getId());                       // Mongo assigns id later
+        assertEquals(received, doc.getReceivedAt()); // stamped by CORE, not client
+        assertNull(doc.getId()); // Mongo assigns id later
     }
 
     // ================= A2 -> A4 : GameEvent.from =================
@@ -63,12 +61,12 @@ class RequestToDocumentMappingTest {
     @Disabled("enable once A2 GameEventRequest compiles")
     @Test
     void eventFromCopiesEveryFieldAndStampsReceivedAt() {
+
         Instant occurred = Instant.parse("2026-07-08T12:00:00Z");   // client clock
         Instant received = Instant.parse("2026-07-08T12:00:01Z");   // server clock (later)
-        var position = new GameEventRequest.Position(12.0, 3.5, -40.0);
-        var request = new GameEventRequest(
-                "PLAYER_DEATH", "8271", "job-1", occurred, position, Map.of("weapon", "axe"));
 
+        var position = new GameEventRequest.Position(12.0, 3.5, -40.0);
+        var request = new GameEventRequest("PLAYER_DEATH", "8271", "job-1", occurred, position, Map.of("weapon", "axe"));
         var doc = GameEvent.from(request, received);
 
         assertEquals("PLAYER_DEATH", doc.getType());
