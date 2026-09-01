@@ -4,11 +4,16 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * C2 - converts every failure into the C1 shape. The plan's acceptance
@@ -38,48 +43,105 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
 	/**
 	 * Validation failures -> 400 with per-field detail.
 	 *
-	 * TODO(averi): implement:
-	 *   1. Build a Map<String, String> of the failed fields. The API walk:
-	 *      ex.getBindingResult().getFieldErrors() returns a List<FieldError>;
-	 *      each FieldError has .getField() (the name, e.g. "placeId") and
-	 *      .getDefaultMessage() (the complaint, e.g. "must not be null").
-	 *   2. Construct the ApiError (status 400, message "validation failed",
-	 *      the map, Instant.now()).
-	 *   3. return ResponseEntity.badRequest().body(apiError);
+	 * <p>This is the handler the acceptance criterion is about: a body that
+	 * fails a {@code @Valid} check must come back as 400 naming the offending
+	 * fields, never as a 500.
+	 *
+	 * <p>LinkedHashMap, not HashMap: the fields come out in the order the
+	 * framework reported them, so two identical bad requests produce byte
+	 * identical responses. That is what makes the body assertable in a test and
+	 * diffable in a log.
 	 */
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
-		throw new UnsupportedOperationException("TODO(averi): implement per C2 step 1-3");
+
+		Map<String, String> fieldErrors = new LinkedHashMap<>();
+
+		for (FieldError error : ex.getBindingResult().getFieldErrors()) {
+			/*
+			 * putIfAbsent, not put. One field can fail several constraints at
+			 * once (playerCount is both @NotNull and @Min(0)), and last-write
+			 * wins would make which complaint you see depend on the framework's
+			 * internal ordering. First reported is at least stable.
+			 */
+			String complaint = error.getDefaultMessage() == null ? "is invalid" : error.getDefaultMessage();
+			fieldErrors.putIfAbsent(error.getField(), complaint);
+		}
+
+		return ResponseEntity.badRequest()
+				.body(new ApiError(400, "validation failed", fieldErrors, Instant.now()));
 	}
 
 	/**
-	 * Unparseable JSON -> 400 (empty fieldErrors map; there are no fields
-	 * to blame when the whole body is garbage).
+	 * Unparseable JSON -> 400, with an empty field map: there are no fields to
+	 * blame when the whole body is garbage.
 	 *
-	 * TODO(averi): construct the ApiError (400, "malformed request body",
-	 * empty map, now) and return it via ResponseEntity.badRequest().
-	 * Do NOT put ex.getMessage() in the response - framework messages can
-	 * leak internals; keep the message fixed.
+	 * <p>The message is FIXED and deliberately says nothing about the parse
+	 * failure. Jackson's own text quotes the offending input and names internal
+	 * classes and line numbers, which hands an unauthenticated caller a probe
+	 * into the server. The detail goes to the log instead, where it is useful
+	 * and not public.
 	 */
 	@ExceptionHandler(HttpMessageNotReadableException.class)
 	public ResponseEntity<ApiError> handleUnreadable(HttpMessageNotReadableException ex) {
-		throw new UnsupportedOperationException("TODO(averi): implement per C2");
+		log.debug("rejected an unparseable request body", ex);
+		return ResponseEntity.badRequest().body(ApiError.of(400, "malformed request body"));
 	}
 
 	/**
-	 * Anything unexpected -> clean 500, no stack trace in the response.
+	 * A missing route or static resource -> 404, still in the C1 shape.
 	 *
-	 * TODO(averi): return (500, "internal error", empty map, now) via
-	 * ResponseEntity.internalServerError(). The stack trace belongs in the
-	 * server log, never in the HTTP response - log it here with your
-	 * chosen logger before returning.
+	 * <p>THIS HANDLER EXISTS BECAUSE OF THE ONE BELOW IT. Since Spring Boot
+	 * 3.2, an unmatched request raises {@link NoResourceFoundException}, and
+	 * this class is a plain {@code @RestControllerAdvice} rather than a
+	 * subclass of {@code ResponseEntityExceptionHandler}. Without this method
+	 * the catch-all would swallow that exception and answer every 404 with a
+	 * 500, which is both wrong and alarming to anything monitoring the service.
+	 *
+	 * <p>Spring picks the most specific matching handler, so declaring this at
+	 * all is what keeps the status correct.
+	 */
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<ApiError> handleNotFound(NoResourceFoundException ex) {
+		return ResponseEntity.status(404).body(ApiError.of(404, "not found"));
+	}
+
+	/**
+	 * Anything that already carries its own HTTP status keeps it.
+	 *
+	 * <p>Same reasoning as the 404 above, generalised: {@code ResponseStatusException}
+	 * and friends all implement {@code ErrorResponse}, and they exist precisely
+	 * to say "answer with this status". Letting the catch-all flatten them into
+	 * 500 would discard a decision some other layer made on purpose.
+	 */
+	@ExceptionHandler(ErrorResponseException.class)
+	public ResponseEntity<ApiError> handleErrorResponse(ErrorResponseException ex) {
+		int status = ex.getStatusCode().value();
+		return ResponseEntity.status(status).body(ApiError.of(status, "request failed"));
+	}
+
+	/**
+	 * Anything unexpected -> a clean 500, with no stack trace in the response.
+	 *
+	 * <p>Logged at ERROR with the exception attached, because this is the only
+	 * record that will exist: the caller is told nothing beyond "internal
+	 * error", by design. A stack trace in an HTTP response tells an attacker
+	 * the framework versions, the package layout and often the file paths.
+	 *
+	 * <p>Note how narrow this is in practice. The handlers above claim
+	 * validation failures, unreadable bodies, missing routes and anything
+	 * carrying its own status, so what reaches here really is unexpected, which
+	 * is what makes an ERROR log line here worth paging on.
 	 */
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiError> handleUnexpected(Exception ex) {
-		throw new UnsupportedOperationException("TODO(averi): implement per C2");
+		log.error("unhandled exception escaped a controller", ex);
+		return ResponseEntity.internalServerError().body(ApiError.of(500, "internal error"));
 	}
 
 }

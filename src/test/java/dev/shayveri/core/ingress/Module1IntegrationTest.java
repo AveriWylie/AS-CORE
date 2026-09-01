@@ -112,14 +112,36 @@ class Module1IntegrationTest {
 
 	// ---- D1 (web layer): validation through the real pipeline ----------
 
-	@Disabled("TODO(averi): after C2+A8 - body missing placeId -> 400, jsonPath $.fieldErrors.placeId exists, and NOT a 500")
+	/*
+	 * C2 has landed, so these two run.
+	 *
+	 * The same two assertions also live in
+	 * dev.shayveri.core.common.ErrorsAreUniformTest, which is NOT gated on
+	 * Docker. That is deliberate rather than duplication: error handling
+	 * touches no database, so gating it behind a container runtime would mean
+	 * the error contract is only verified on machines that happen to have
+	 * Docker. Here the same requests run against the full stack with a real
+	 * Mongo behind it, which is what this class is for.
+	 */
 	@Test
-	void missingPlaceIdGives400WithFieldError() {
+	void missingPlaceIdGives400WithFieldError() throws Exception {
+		mockMvc.perform(post("/api/telemetry")
+						.header("X-Api-Key", "dev-roblox-key")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"jobId\":\"job-a\",\"playerCount\":42,\"serverFps\":58.5}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fieldErrors.placeId").exists());
 	}
 
-	@Disabled("TODO(averi): after C2+A8 - garbage body 'not json{' -> clean 400 ApiError")
 	@Test
-	void garbageBodyGives400() {
+	void garbageBodyGives400() throws Exception {
+		mockMvc.perform(post("/api/telemetry")
+						.header("X-Api-Key", "dev-roblox-key")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("not json{"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.status").value(400))
+				.andExpect(jsonPath("$.message").value("malformed request body"));
 	}
 
 	// ---- D3: persistence ------------------------------------------------

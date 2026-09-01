@@ -1,7 +1,6 @@
 package dev.shayveri.core.common;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-
 import java.util.Map;
 
 @ConfigurationProperties(prefix = "shayveri.security")
