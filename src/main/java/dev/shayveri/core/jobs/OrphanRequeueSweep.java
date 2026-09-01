@@ -25,7 +25,7 @@ import org.springframework.stereotype.Component;
  * dev.shayveri.core.nodes.HeartbeatStore (ours, cross-module), QueueStore, JobStore,
  * RealtimePublisher (all ours).
  *
- * TODO(averi): for each known node, if !heartbeats.isAlive(id), drain its inflight list via
+ * TODO(shahyar): for each known node, if !heartbeats.isAlive(id), drain its inflight list via
  * release + Job->QUEUED + alert. Order the operations so a crash mid-sweep leaves a recoverable
  * state (release before status flip; the next sweep re-covers anything missed).
  */
@@ -33,6 +33,6 @@ import org.springframework.stereotype.Component;
 public class OrphanRequeueSweep {
 	@Scheduled(fixedDelay = 30000)
 	public void sweep() {
-		// TODO(averi): J9 - dead-node inflight drain, idempotent.
+		// TODO(shahyar): J9 - dead-node inflight drain, idempotent.
 	}
 }

@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
  *   registry.counter(name, tags...).increment(); Gauge.builder(name, supplier).register(registry).
  * Needs V1 dependency micrometer-registry-prometheus for /actuator/prometheus to serve.
  *
- * TODO(averi): inject MeterRegistry; implement:
+ * TODO(shahyar): inject MeterRegistry; implement:
  *   telemetryAccepted()      -> counter shayveri_telemetry_ingest_total
  *   openCloudOutcome(ok)     -> counter shayveri_opencloud_calls_total{outcome}
  *   jobTransition(from,to)   -> counter shayveri_job_transitions_total{from,to}
@@ -21,5 +21,5 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class ShayveriMetrics {
-	// TODO(averi): constructor(MeterRegistry) + the wrappers above.
+	// TODO(shahyar): constructor(MeterRegistry) + the wrappers above.
 }

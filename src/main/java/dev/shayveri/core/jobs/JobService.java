@@ -20,10 +20,10 @@ import org.springframework.stereotype.Service;
  *       backoff sleep loses only the delay - J9's orphan sweep re-covers the job.
  * Consumes: @Service, Executor (AsyncConfig, for the backoff sleep), JobStore, QueueStore,
  * RealtimePublisher - interfaces only.
- * TODO(averi): implement the six methods; keep every status change going through one place so the
+ * TODO(shahyar): implement the six methods; keep every status change going through one place so the
  * legal-transition set is enforced in exactly one file.
  */
 @Service
 public class JobService {
-	// TODO(averi): constructor + create/claim/progress/complete/fail per blueprint J8.
+	// TODO(shahyar): constructor + create/claim/progress/complete/fail per blueprint J8.
 }

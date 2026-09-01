@@ -38,7 +38,7 @@ import java.util.Optional;
  *                                                       virtual threads: a parked claim costs ~nothing)
  *   remove(inflightKey, 1, id)                          ack / release
  *
- * TODO(averi): inject StringRedisTemplate; implement the four methods. claimOne iterates the type
+ * TODO(shahyar): inject StringRedisTemplate; implement the four methods. claimOne iterates the type
  * bands, issuing the blocking move against each; the FIRST that yields an id wins; on total timeout
  * return Optional.empty(). release checks membership before moving so a double-release (sweep racing
  * a slow complete) is harmless.
@@ -46,15 +46,15 @@ import java.util.Optional;
 @Component
 public class RedisQueueStore implements QueueStore {
 	@Override public void enqueue(JobType type, String jobId, int priority) {
-		throw new UnsupportedOperationException("TODO(averi): J7 - LPUSH to the priority band");
+		throw new UnsupportedOperationException("TODO(shahyar): J7 - LPUSH to the priority band");
 	}
 	@Override public Optional<String> claimOne(List<JobType> types, String nodeId, Duration timeout) {
-		throw new UnsupportedOperationException("TODO(averi): J7 - BLMOVE, atomic, do NOT decompose");
+		throw new UnsupportedOperationException("TODO(shahyar): J7 - BLMOVE, atomic, do NOT decompose");
 	}
 	@Override public void release(String nodeId, String jobId) {
-		throw new UnsupportedOperationException("TODO(averi): J7 - membership-checked move back");
+		throw new UnsupportedOperationException("TODO(shahyar): J7 - membership-checked move back");
 	}
 	@Override public void ack(String nodeId, String jobId) {
-		throw new UnsupportedOperationException("TODO(averi): J7 - remove from inflight");
+		throw new UnsupportedOperationException("TODO(shahyar): J7 - remove from inflight");
 	}
 }
