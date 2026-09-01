@@ -17,27 +17,40 @@ tags and this file are the same assignment; if they ever disagree, the tags in
 the code win, because that is what someone reads while working.
 
 
-BEFORE EITHER OF US STARTS
---------------------------
+MODULE 1 IS NOT QUITE FINISHED
+------------------------------
 
-One package is not a numbered module but blocks work in several: core/common,
-the error handling layer. It sits outside the alternation.
+Correction to an earlier version of this file, which described core/common as
+sitting outside the alternation. It does not. C1 and C2 are units OF Module 1,
+listed at lines 118 and 122 of module1_blueprint.txt, and its build order opens
+with them: "1. C1 + C2 (error contract first - everything else returns it)".
 
-    core/common                                          AVERI
-    7 TODOs, 3 stubs, 6 files
+    core/common  (Module 1, units C1 and C2)             AVERI
+    DONE
 
-    GlobalExceptionHandler has three methods that still throw
-    UnsupportedOperationException, and ApiError is an empty record. Ten
-    disabled tests in Module1IntegrationTest are waiting on them, plus eleven
-    more across the validation and mapping tests.
+    ApiError now declares its four components, with a compact constructor that
+    normalises fieldErrors to empty so no client has to null-check it.
+    GlobalExceptionHandler implements all three handlers, plus two more that
+    keep its catch-all from flattening legitimate statuses: since Spring Boot
+    3.2 an unmatched request raises NoResourceFoundException, and
+    @ExceptionHandler(Exception.class) would otherwise answer every 404 with a
+    500.
 
-    C2, ApiError, handleValidation, handleUnreadable, handleAny
+    Verified by ErrorsAreUniformTest, which is deliberately NOT gated on
+    Docker: error handling touches no database, and gating it behind a
+    container runtime would mean the error contract is only checked on machines
+    that happen to have Docker.
+
+    What remains of Module 1 is the D-series test work, most of which needs
+    Docker for its Testcontainers Mongo. Ownership is unchanged: Module 1 is
+    Averi's throughout.
 
 
 THE ALTERNATION
 ---------------
 
-Numbered in build order. The sequence is not decorative: it is the order the
+Numbered in build order, starting from Module 2 since Module 1 is Averi's and
+nearly complete. The sequence is not decorative: it is the order the
 dependencies allow, and step 02 is the one that crosses between us.
 
     01   MODULE 2   NODES              AVERI       11 TODOs, 4 stubs

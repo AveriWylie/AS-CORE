@@ -23,16 +23,12 @@ import java.util.Map;
  * to empty rather than trusting callers to pass one.
  */
 public record ApiError(
-
 		// The HTTP status code, repeated in the body so a logged payload is self-describing
 		int status,
-
 		// One human-readable summary line. Fixed text, never a framework message; see C2.
 		String message,
-
 		// Field name to what is wrong with it. Empty, never null, when this is not a validation failure.
 		Map<String, String> fieldErrors,
-
 		// When the error happened. Serialized as an ISO-8601 instant by Spring Boot's Jackson defaults. */
 		Instant timestamp) {
 
@@ -45,7 +41,9 @@ public record ApiError(
 	immutable, and keeping a reference to a caller's mutable HashMap would make
 	that a promise this type cannot actually keep.
 	*/
-	public ApiError {fieldErrors = fieldErrors == null ? Map.of() : Map.copyOf(fieldErrors);}
+	public ApiError {
+		fieldErrors = fieldErrors == null ? Map.of() : Map.copyOf(fieldErrors);
+	}
 
 	/** The common case: a failure with no per-field detail. */
 	public static ApiError of(int status, String message) {

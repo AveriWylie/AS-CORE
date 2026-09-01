@@ -96,10 +96,8 @@ abstract class TelemetryStoreContract {
 	void savesASnapshot() {
 		String placeId = marker();
 		store.saveSnapshot(snapshot(placeId));
-
 		List<Map<String, Object>> found = findByPlaceId(snapshots(), placeId);
 		assertEquals(1, found.size(), storeName() + " stored the wrong number of snapshots");
-
 		Map<String, Object> doc = found.get(0);
 		assertEquals("job-a", doc.get("jobId"), storeName() + " lost jobId");
 		assertEquals("round-3", doc.get("round"), storeName() + " lost round");
@@ -127,6 +125,7 @@ abstract class TelemetryStoreContract {
 		long millis = receivedAt instanceof java.util.Date date
 				? date.toInstant().toEpochMilli()
 				: Long.parseLong(String.valueOf(receivedAt));
+
 		assertEquals(1754500000000L, millis, storeName() + " changed the instant");
 	}
 
@@ -135,7 +134,6 @@ abstract class TelemetryStoreContract {
 	void preservesNestedDocuments() {
 		String placeId = marker();
 		store.saveSnapshot(snapshot(placeId));
-
 		Object metrics = findByPlaceId(snapshots(), placeId).get(0).get("customMetrics");
 		assertTrue(metrics instanceof Map, storeName() + " did not store customMetrics as a document: " + metrics);
 		assertEquals("7", String.valueOf(((Map<?, ?>) metrics).get("kills")), storeName() + " lost a nested value");

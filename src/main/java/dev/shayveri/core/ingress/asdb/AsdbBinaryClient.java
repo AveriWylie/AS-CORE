@@ -169,13 +169,9 @@ public class AsdbBinaryClient implements AutoCloseable {
 		lock.lock();
 
 		try {
-			if (closed) {
-				throw new AsdbClient.AsdbException("asdb client is closed");
-			}
+			if (closed) {throw new AsdbClient.AsdbException("asdb client is closed");}
 			Conn conn = idle.pollLast();
-			if (conn != null) {
-				return conn;
-			}
+			if (conn != null) {return conn;}
 		} finally {
 			lock.unlock();
 		}
@@ -226,9 +222,11 @@ public class AsdbBinaryClient implements AutoCloseable {
 
 		try {
 			closed = true;
+
 			for (Conn conn : idle) {
 				conn.closeQuietly();
 			}
+
 			idle.clear();
 		} finally {
 			lock.unlock();

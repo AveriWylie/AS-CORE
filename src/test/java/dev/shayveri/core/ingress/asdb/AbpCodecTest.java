@@ -32,7 +32,6 @@ class AbpCodecTest {
 	private static Map<String, Object> telemetryDocument() {
 		Map<String, Object> metrics = new LinkedHashMap<>();
 		metrics.put("kills", 7);
-
 		Map<String, Object> doc = new LinkedHashMap<>();
 		doc.put("placeId", "place-1");
 		doc.put("playerCount", 42);
@@ -66,10 +65,11 @@ class AbpCodecTest {
 		 * without confirming which side is right.
 		 */
 		String fromRust = "050000000d000000637573746f6d4d657472696373070100000005000000"
-				+ "6b696c6c73030700000000000000" + "07000000706c61636549640507000000706c6163652d31"
-				+ "0b000000706c61796572436f756e74032a00000000000000"
-				+ "0a0000007265636569766564417403006959809801000009000000"
-				+ "736572766572467073040000000000404d40";
+						+ "6b696c6c73030700000000000000"
+						+ "07000000706c61636549640507000000706c6163652d31"
+						+ "0b000000706c61796572436f756e74032a00000000000000"
+						+ "0a0000007265636569766564417403006959809801000009000000"
+						+ "736572766572467073040000000000404d40";
 
 		assertEquals(fromRust, hex(encode(telemetryDocument())));
 	}

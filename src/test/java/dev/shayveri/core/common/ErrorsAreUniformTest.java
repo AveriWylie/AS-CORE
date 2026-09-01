@@ -120,6 +120,28 @@ class ErrorsAreUniformTest {
 	}
 
 	@Test
+	@DisplayName("an invalid element inside a batch is a 400, not a 500")
+	void invalidBatchElementIsA400() throws Exception {
+		/*
+		 * The events endpoint takes List<@Valid GameEventRequest>, which is a
+		 * container element constraint. Those are checked by METHOD validation,
+		 * enabled by @Validated on the controller, and method validation throws
+		 * ConstraintViolationException rather than MethodArgumentNotValidException.
+		 *
+		 * Different exception, different handler. If nothing handles it the
+		 * catch-all turns a caller's bad input into a 500, which is the exact
+		 * failure C2 exists to prevent, just on a path the obvious test misses.
+		 */
+		mockMvc.perform(post("/api/telemetry/events")
+						.header("X-Api-Key", ROBLOX_KEY)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("[{\"jobId\":\"job-a\"}]"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("validation failed"))
+				.andExpect(jsonPath("$.fieldErrors.placeId").exists());
+	}
+
+	@Test
 	@DisplayName("fieldErrors is always present, so no client has to null-check it")
 	void fieldErrorsIsNeverAbsent() throws Exception {
 		// the record's compact constructor guarantees this; asserted through

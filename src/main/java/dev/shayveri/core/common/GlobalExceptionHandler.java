@@ -3,7 +3,8 @@ package dev.shayveri.core.common;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -71,6 +72,42 @@ public class GlobalExceptionHandler {
 			 */
 			String complaint = error.getDefaultMessage() == null ? "is invalid" : error.getDefaultMessage();
 			fieldErrors.putIfAbsent(error.getField(), complaint);
+		}
+
+		return ResponseEntity.badRequest()
+				.body(new ApiError(400, "validation failed", fieldErrors, Instant.now()));
+	}
+
+	/**
+	 * Validation failures on METHOD parameters -> 400, same shape as above.
+	 *
+	 * <p>WHY A SECOND VALIDATION HANDLER. {@code @Valid} on a whole
+	 * {@code @RequestBody} raises MethodArgumentNotValidException, handled
+	 * above. A constraint on a container ELEMENT does not: the events endpoint
+	 * takes {@code List<@Valid GameEventRequest>}, which is checked by method
+	 * validation (enabled by {@code @Validated} on the controller) and raises
+	 * {@link ConstraintViolationException} instead.
+	 *
+	 * <p>Without this, that endpoint answered a caller's bad input with a 500,
+	 * which is precisely the failure C2 exists to prevent, on the one path the
+	 * obvious test does not cover. Found by asking whether {@code @Validated}
+	 * was load-bearing; it is, and it needed this.
+	 *
+	 * <p>The property path is trimmed to its last segment. Method validation
+	 * reports paths like {@code events[0].placeId}, and the leading method and
+	 * argument names are noise to a client that only wants to know which field
+	 * it got wrong.
+	 */
+	@ExceptionHandler(ConstraintViolationException.class)
+	public ResponseEntity<ApiError> handleConstraintViolation(ConstraintViolationException ex) {
+
+		Map<String, String> fieldErrors = new LinkedHashMap<>();
+
+		for (ConstraintViolation<?> violation : ex.getConstraintViolations()) {
+			String path = String.valueOf(violation.getPropertyPath());
+			int lastDot = path.lastIndexOf('.');
+			String field = lastDot < 0 ? path : path.substring(lastDot + 1);
+			fieldErrors.putIfAbsent(field, violation.getMessage());
 		}
 
 		return ResponseEntity.badRequest()
