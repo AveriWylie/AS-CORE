@@ -98,6 +98,23 @@ public class AsdbBinaryClient implements AutoCloseable {
 		return reply;
 	}
 
+	/**
+	 * Runs a read query and returns the documents.
+	 *
+	 * <p>Exists because {@link #execute} hands back an {@code AbpCodec.Reply},
+	 * and AbpCodec is package-private: the frame layout is an implementation
+	 * detail that callers outside this package should not have to know. This
+	 * returns plain maps instead, which is what a caller actually wants.
+	 *
+	 * <p>Any user-supplied value inside {@code asl} MUST already be escaped by
+	 * {@link AsdbEntityMapper}; this is the text path, with the same injection
+	 * boundary the mapper documents. Use {@link #insert} for writes, where
+	 * values travel as length-prefixed bytes and are never parsed at all.
+	 */
+	public List<Map<String, Object>> query(String asl) {
+		return execute(asl).documents();
+	}
+
 	/** True when a connection can be made and the server answers a ping. Never throws. */
 	public boolean isHealthy() {
 		try {
