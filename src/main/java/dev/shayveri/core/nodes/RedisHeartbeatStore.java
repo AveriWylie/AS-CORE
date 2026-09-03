@@ -21,9 +21,6 @@ import java.util.Set;
  *   hasKey(key)                                            - liveness check (key present = alive)
  *   keys("node:hb:*")                                      - aliveNodeIds (fine at 9 nodes; use
  *                                                            SCAN if the fleet ever grows large)
- *
- * TODO(averi): inject StringRedisTemplate; implement the four N6 methods. recordHeartbeat writes
- * both keys with the 45s TTL; aliveNodeIds strips the prefix off the matched keys.
  */
 @Component
 public class RedisHeartbeatStore implements HeartbeatStore {

@@ -1,4 +1,4 @@
-package dev.shayveri.core.ingress.asdb;
+package dev.shayveri.core.ingress;
 
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;

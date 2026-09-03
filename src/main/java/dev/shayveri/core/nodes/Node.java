@@ -18,14 +18,10 @@ import org.springframework.data.mongodb.core.mapping.Document;
  * idempotent" is satisfied by the id choice, not by logic.
  *
  * Consumes: @Document("nodes"), @Id. No TTL anywhere here.
- *
- * TODO(averi): fields @Id String nodeId; String hostname; Map<String,Object> capabilities;
- * int maxConcurrentJobs; Instant registeredAt; Instant lastRegisteredAt. Constructor + getters;
- * a static from(NodeRegisterRequest, Instant) factory.
  */
 @Document("nodes")
 public class Node {
 	@Id
 	private String nodeId;
-	// TODO(averi): remaining fields + constructor + getters + static factory per blueprint N3.
+	// TODO(averi): fields + constructor + getters + static factory per blueprint N3.
 }

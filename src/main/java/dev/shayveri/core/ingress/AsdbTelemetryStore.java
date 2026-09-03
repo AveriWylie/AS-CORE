@@ -1,6 +1,9 @@
-package dev.shayveri.core.ingress.asdb;
+package dev.shayveri.core.ingress;
 
 import java.time.Duration;
+import dev.shayveri.core.asdb.AsdbBinaryClient;
+import dev.shayveri.core.asdb.AsdbClient;
+import dev.shayveri.core.asdb.AsdbEntityMapper;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -8,9 +11,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-import dev.shayveri.core.ingress.GameEvent;
-import dev.shayveri.core.ingress.TelemetrySnapshot;
-import dev.shayveri.core.ingress.TelemetryStore;
 
 /**
  * A {@link TelemetryStore} backed by asdb instead of MongoDB.
@@ -85,13 +85,14 @@ public class AsdbTelemetryStore implements TelemetryStore {
 	private final Transport transport;
 	private final String endpoint;
 
-	public AsdbTelemetryStore(@Value("${shayveri.store.asdb.url:http://127.0.0.1:7070}") String url,
-							  @Value("${shayveri.store.asdb.abp-host:127.0.0.1}") String abpHost,
-							  @Value("${shayveri.store.asdb.abp-port:7071}") int abpPort,
-							  @Value("${shayveri.store.asdb.protocol:binary}") String protocol,
-							  @Value("${shayveri.store.asdb.max-idle-connections:8}") int maxIdle,
-							  @Value("${shayveri.store.asdb.connect-timeout-ms:2000}") long connectTimeoutMs,
-							  @Value("${shayveri.store.asdb.request-timeout-ms:5000}") long requestTimeoutMs) {
+	public AsdbTelemetryStore(
+			@Value("${shayveri.store.asdb.url:http://127.0.0.1:7070}") String url,
+			@Value("${shayveri.store.asdb.abp-host:127.0.0.1}") String abpHost,
+			@Value("${shayveri.store.asdb.abp-port:7071}") int abpPort,
+			@Value("${shayveri.store.asdb.protocol:binary}") String protocol,
+			@Value("${shayveri.store.asdb.max-idle-connections:8}") int maxIdle,
+			@Value("${shayveri.store.asdb.connect-timeout-ms:2000}") long connectTimeoutMs,
+			@Value("${shayveri.store.asdb.request-timeout-ms:5000}") long requestTimeoutMs) {
 
 		Duration connectTimeout = Duration.ofMillis(connectTimeoutMs);
 		Duration requestTimeout = Duration.ofMillis(requestTimeoutMs);
@@ -183,6 +184,7 @@ public class AsdbTelemetryStore implements TelemetryStore {
 		public boolean healthy() {return client.isHealthy();}
 	}
 
+
 	/**
 	 * Creates the collections and indexes this store needs, once, at startup.
 	 *
@@ -227,6 +229,7 @@ public class AsdbTelemetryStore implements TelemetryStore {
 		log.info("asdb schema ready at {}", endpoint);
 	}
 
+
 	/*
 	 * Startup DDL is not fatal, because "already exists" is the normal case on
 	 * every restart after the first and asdb reports it as an error rather than
@@ -241,6 +244,6 @@ public class AsdbTelemetryStore implements TelemetryStore {
 		}
 	}
 
-	/** Exposed so a health indicator or a test can check the server is reachable. */
+	// Exposed so a health indicator or a test can check the server is reachable
 	public boolean isHealthy() {return transport.healthy();}
 }

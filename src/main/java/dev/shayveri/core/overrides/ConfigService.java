@@ -18,14 +18,13 @@ import org.springframework.stereotype.Service;
  *   getActive(placeId): from O6 cache, fall through to O4 + repopulate on miss.
  * Consumes: @Service; depends on ConfigStore (O4), ActiveConfigCache (O6), EgressService (M5),
  * RealtimePublisher, AuditService - all through their interfaces (rule 5 across modules).
- * TODO(averi): implement per blueprint O8.
  */
 @Service
 public class ConfigService {
 	public int save(ConfigSaveRequest req, String who) {
-		throw new UnsupportedOperationException("TODO(averi): O8 save");
+		throw new UnsupportedOperationException("TODO(averi): O8");
 	}
 	public void activate(String placeId, String namespace, int version, String who) {
-		throw new UnsupportedOperationException("TODO(averi): O8 activate");
+		throw new UnsupportedOperationException("TODO(averi): O8");
 	}
 }

@@ -3,9 +3,7 @@ package dev.shayveri.core.jobs;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Executor;
-
 import dev.shayveri.core.realtime.RealtimePublisher;
-
 import org.springframework.stereotype.Service;
 
 /**
@@ -20,8 +18,6 @@ import org.springframework.stereotype.Service;
  *       backoff sleep loses only the delay - J9's orphan sweep re-covers the job.
  * Consumes: @Service, Executor (AsyncConfig, for the backoff sleep), JobStore, QueueStore,
  * RealtimePublisher - interfaces only.
- * TODO(shahyar): implement the six methods; keep every status change going through one place so the
- * legal-transition set is enforced in exactly one file.
  */
 @Service
 public class JobService {

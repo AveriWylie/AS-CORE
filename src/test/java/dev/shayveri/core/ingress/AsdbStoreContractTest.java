@@ -6,7 +6,7 @@ import java.util.Map;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
-import dev.shayveri.core.ingress.asdb.AsdbBinaryClient;
+import dev.shayveri.core.asdb.AsdbBinaryClient;
 
 /**
  * The store contract, run against asdb.

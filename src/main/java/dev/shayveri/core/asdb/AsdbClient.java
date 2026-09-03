@@ -1,4 +1,4 @@
-package dev.shayveri.core.ingress.asdb;
+package dev.shayveri.core.asdb;
 
 import java.net.URI;
 import java.net.http.HttpClient;

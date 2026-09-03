@@ -13,11 +13,6 @@ import org.springframework.stereotype.Component;
  * rejection). This is the plan's explicit "a typo'd JSON key can't brick a live game."
  *
  * Consumes: nothing - entirely ours.
- *
- * TODO(averi):
- *   1. A registry: Map<namespace, Map<key, Class<?>>> seeded for weapons/spawns/graphics.
- *   2. validate(namespace, values) -> List<String> problems (empty = ok): unknown namespace,
- *      unknown key, or value not assignable to the expected type each produce one problem string.
  */
 @Component
 public class ConfigSchemaRegistry {

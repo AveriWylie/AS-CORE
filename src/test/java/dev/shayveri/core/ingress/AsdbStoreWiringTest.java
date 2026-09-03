@@ -1,4 +1,6 @@
-package dev.shayveri.core.ingress.asdb;
+package dev.shayveri.core.ingress;
+
+import dev.shayveri.core.asdb.AsdbClient;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -11,8 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
-import dev.shayveri.core.ingress.TelemetrySnapshot;
-import dev.shayveri.core.ingress.TelemetryStore;
 
 /**
  * Boots the real Spring context with the asdb backend selected and writes

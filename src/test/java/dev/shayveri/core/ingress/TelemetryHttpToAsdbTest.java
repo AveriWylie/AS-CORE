@@ -1,4 +1,6 @@
-package dev.shayveri.core.ingress.asdb;
+package dev.shayveri.core.ingress;
+
+import dev.shayveri.core.asdb.AsdbClient;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;

@@ -13,9 +13,8 @@ import org.springframework.stereotype.Service;
  *       {node, status UP|DOWN, load}. Status is COMPUTED AT READ TIME from key existence, never
  *       stored - so it can never be stale.
  * Consumes: @Service; NodeStore (N4), HeartbeatStore (N6) - interfaces only.
- * TODO(averi): implement the three methods per blueprint N8.
  */
 @Service
 public class NodeService {
-	// TODO(averi): constructor(NodeStore, HeartbeatStore) + register/heartbeat/listWithStatus.
+	// TODO(averi): constructor + register/heartbeat/listWithStatus per blueprint N8.
 }

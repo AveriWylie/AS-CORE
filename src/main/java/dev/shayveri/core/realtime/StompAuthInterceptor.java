@@ -14,11 +14,10 @@ import org.springframework.stereotype.Component;
 // Consumes: ChannelInterceptor (override preSend); StompHeaderAccessor.wrap(msg) -> getCommand()==CONNECT,
 //   getFirstNativeHeader("X-Api-Key"); ApiKeyResolver seam (not raw map). Register via B3 configureClientInboundChannel.
 // NOTE: HTTP SecurityConfig does NOT cover STOMP frames - this is their equivalent of ApiKeyAuthFilter.
-// TODO(averi): implement preSend per blueprint R1.
 @Component
 public class StompAuthInterceptor implements ChannelInterceptor {
 	@Override
 	public Message<?> preSend(Message<?> message, org.springframework.messaging.MessageChannel channel) {
-		return message; // TODO(averi): R1 - inspect CONNECT, require DASH, else return null to reject.
+		return message; // TODO(averi): preSend per blueprint R1.
 	}
 }

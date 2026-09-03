@@ -10,7 +10,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import dev.shayveri.core.ingress.asdb.AsdbEntityMapper;
+import dev.shayveri.core.asdb.AsdbEntityMapper;
 
 /**
  * The behaviour every {@link TelemetryStore} must have, written once and run

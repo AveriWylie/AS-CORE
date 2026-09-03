@@ -18,7 +18,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
  * Consumes: @Document("jobs"), @Id (generated here, unlike Node's natural key - a job has no
  * external identity), @Indexed on status and mapId (the two filters GET /api/jobs requires).
  *
- * TODO(shahyar): fields @Id String id; JobType type; String mapId; int priority; Map payload;
  * {@code @Indexed} JobStatus status; String claimedBy; int attempts; int maxRetries;
  * Instant createdAt/claimedAt/startedAt/finishedAt; String resultRef; Map resultMeta; String
  * lastError. Constructor for creation (status QUEUED, attempts 0); getters; controlled mutators
@@ -26,7 +25,5 @@ import org.springframework.data.mongodb.core.mapping.Document;
  */
 @Document("jobs")
 public class Job {
-	@Id
-	private String id;
-	// TODO(shahyar): remaining fields + creation constructor + lifecycle mutators per blueprint J3.
+	// TODO(shahyar): fields + creation constructor + lifecycle mutators per blueprint J3.
 }

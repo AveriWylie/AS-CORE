@@ -26,14 +26,11 @@ import org.springframework.stereotype.Component;
  * Consumes: @Scheduled(fixedDelay = 15000) on the method; @EnableScheduling required ONCE on a
  * config class or this is silently inert (same trap family as auto-index-creation and @Valid);
  * HeartbeatStore.aliveNodeIds() (ours), RealtimePublisher (ours) for /topic/nodes.
- *
- * TODO(averi): keep a Set<String> previousAlive field; each sweep diff current vs previous,
- * publish per transition, then replace previous.
  */
 @Component
 public class NodeStatusSweep {
 	@Scheduled(fixedDelay = 15000)
 	public void sweep() {
-		// TODO(averi): N9 transition detection + publish.
+		// TODO(averi): transition detection + publish per blueprint N9.
 	}
 }
