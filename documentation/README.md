@@ -6,8 +6,6 @@ Reference documentation meant to be **read by other people** to genuinely unders
 
 This is **not**:
 - **Inline code comments** - those explain a single file to whoever is editing it.
-- **The plan / blueprints** (`Idea_Generation/plan.txt`, `Idea_Generation/docs/module*_blueprint.txt`) - those are *construction specs*: what to build and in what order.
-- **The research log** (`Idea_Generation/claude-usage-guide.txt`) - that's a separate experiment.
 
 This **is**: the settled, human-facing explanation of *what each part is, why it exists, and how it fits together* - the understanding someone needs to work in this codebase without having built it.
 
@@ -16,15 +14,18 @@ This **is**: the settled, human-facing explanation of *what each part is, why it
 ```
 documentation/
   README.md              ← this file
+  architecture/
+    asdb.md
+    security.md
   module1/
     module1-overview.md  ← what the module is, conceptually (added when settled)
-    A1-....md            ← one doc per unit, added when that unit is DONE + understood
-    A2-....md
-    ...
+    A3-telemetry-snapshot.md
+    A4-game-event.md
+    request-vs-document.md
   module2/  ...
 ```
 
-One folder per module. Inside each: an **overview** (the module's purpose and shape), then **one doc per unit** as that unit is completed.
+One folder per module. Inside each: an **overview** (the module's purpose and shape), then **one doc per unit** as that unit is completed. Shared architecture notes live under `architecture/`.
 
 ## The rule for how docs get added here
 
