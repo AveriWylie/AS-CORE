@@ -32,7 +32,7 @@ Every endpoint except `/actuator/health` requires an `X-Api-Key` header. Dev key
 ## Layout
 
 ```
-src/main/java/dev/shayveri/core/   the service, package-by-module:
+src/main/java/ascore/   the service, package-by-module:
   common/ config/                  shared pieces + Spring configuration
   ingress/ nodes/ jobs/ overrides/ egress/ realtime/ observability/
                                    one folder per module (see the plan)

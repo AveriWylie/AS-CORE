@@ -6,7 +6,7 @@ concurrency guarantees, not features. They are called out explicitly as
 HARD SPOT 1 and HARD SPOT 2 - everything else is the established pattern.
 
 ----------------------------------------------------------------------
-A. UNITS - package dev.shayveri.core.jobs
+A. UNITS - package ascore.jobs
 ----------------------------------------------------------------------
 
 J1. JobType / JobStatus             (enums)
@@ -104,7 +104,7 @@ J9. OrphanRequeueSweep              (HARD SPOT 2)
     raced a slow complete()) must be harmless - release() checks
     membership before moving; a completed job's ack already removed it.
     Consumes: @Scheduled + @EnableScheduling (shared config with N9);
-    dev.shayveri.core.nodes.HeartbeatStore (ours, cross-module).
+    ascore.nodes.HeartbeatStore (ours, cross-module).
 
 J10. JobController
     POST /api/jobs               (DASH)  202 + created id

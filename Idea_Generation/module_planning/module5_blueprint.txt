@@ -7,7 +7,7 @@ Module 4 poll path is the guaranteed fallback, so everything here
 degrades loudly instead of breaking anything.
 
 ----------------------------------------------------------------------
-A. UNITS - package dev.shayveri.core.egress
+A. UNITS - package ascore.egress
 ----------------------------------------------------------------------
 
 E1. OpenCloudProperties             (config binding)

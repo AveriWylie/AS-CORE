@@ -7,7 +7,7 @@ the dashboard work demands it (naturally alongside Phase 2-3). Topic
 vocabulary is fixed in plan.txt and already partially in use.
 
 ----------------------------------------------------------------------
-A. UNITS - package dev.shayveri.core.realtime (+ one config touch)
+A. UNITS - package ascore.realtime (+ one config touch)
 ----------------------------------------------------------------------
 
 R1. StompAuthInterceptor            (closes the Phase-1 security hole)

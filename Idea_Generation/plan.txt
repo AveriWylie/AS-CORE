@@ -86,7 +86,7 @@ Evolution roadmap - each future need lands in exactly one seam:
 ----------------------------------------------------------------------
 PHASE 0 - SCAFFOLD (COMPLETE)
 ----------------------------------------------------------------------
-Package layout (package-by-module, not by layer), under dev.shayveri.core:
+Package layout (package-by-module, not by layer), under ascore:
 config/ common/ ingress/ nodes/ jobs/ overrides/ egress/ realtime/
 observability/.
 

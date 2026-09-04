@@ -9,7 +9,7 @@ Definition of done for the whole phase: a fake Luau script (a curl loop)
 posts telemetry, and it is visible live on a raw WebSocket client.
 
 ----------------------------------------------------------------------
-A. UNITS TO CREATE - package dev.shayveri.core.ingress
+A. UNITS TO CREATE - package ascore.ingress
 ----------------------------------------------------------------------
 
 A1. TelemetrySnapshotRequest        (record - incoming DTO)
@@ -84,7 +84,7 @@ A8. TelemetryController             (class - the HTTP edge)
     there, never in the controller.
 
 ----------------------------------------------------------------------
-B. UNITS TO CREATE - package dev.shayveri.core.realtime (minimal slice)
+B. UNITS TO CREATE - package ascore.realtime (minimal slice)
 ----------------------------------------------------------------------
 
 B1. RealtimePublisher               (interface)
@@ -111,7 +111,7 @@ Topic used this phase: /topic/telemetry/{placeId} on every accepted
 snapshot (payload = the persisted snapshot).
 
 ----------------------------------------------------------------------
-C. UNITS TO CREATE - package dev.shayveri.core.common (shared, built here
+C. UNITS TO CREATE - package ascore.common (shared, built here
    because Module 1 is the first to need them)
 ----------------------------------------------------------------------
 

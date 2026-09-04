@@ -10,7 +10,7 @@ node agent registers, claims a job, reports progress, completes. Module
 re-registration is idempotent.
 
 ----------------------------------------------------------------------
-A. UNITS - package dev.shayveri.core.nodes
+A. UNITS - package ascore.nodes
 ----------------------------------------------------------------------
 
 N1. NodeRegisterRequest             (record - incoming DTO)

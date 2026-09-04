@@ -8,7 +8,7 @@ invariant is what makes "rollback restores prior values exactly" a
 one-line proof instead of a prayer.
 
 ----------------------------------------------------------------------
-A. UNITS - package dev.shayveri.core.overrides
+A. UNITS - package ascore.overrides
 ----------------------------------------------------------------------
 
 O1. ConfigSaveRequest               (record)

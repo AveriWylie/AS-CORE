@@ -5,7 +5,7 @@ Three independent strands: metrics, audit, structured logs. Nothing here
 sits on a request hot path except one-line metric increments.
 
 ----------------------------------------------------------------------
-A. UNITS - package dev.shayveri.core.observability
+A. UNITS - package ascore.observability
 ----------------------------------------------------------------------
 
 V1. Build additions (consumed dependencies, build.gradle.kts):

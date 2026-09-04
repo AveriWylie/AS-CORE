@@ -1,6 +1,6 @@
 # Module 1 - Ingress (Telemetry Intake)
 
-**Package:** `dev.shayveri.core.ingress`
+**Package:** `ascore.ingress`
 **One-line purpose:** accept telemetry from the outside world (Roblox game servers), validate it, timestamp it, store it, and broadcast it live - cheaply, because this is the highest-frequency path in the whole system.
 
 This document explains *what the module is and how its pieces fit*. For the exact build steps see the blueprint (`Idea_Generation/docs/module1_blueprint.txt`); for line-level detail read the code comments.

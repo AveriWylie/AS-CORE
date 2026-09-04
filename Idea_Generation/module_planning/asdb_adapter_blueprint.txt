@@ -122,7 +122,7 @@ becomes correct and the change is one import per entity, exactly as
 originally costed.
 
 ----------------------------------------------------------------------
-C. UNITS - package dev.shayveri.core.ingress.asdb
+C. UNITS - package ascore.ingress.asdb
 ----------------------------------------------------------------------
 Note the package: ingress.asdb, not the planned core.asdb. It sits beside
 the interface it implements rather than in a parallel tree, which keeps
