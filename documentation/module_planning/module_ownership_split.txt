@@ -1,0 +1,384 @@
+MODULE OWNERSHIP SPLIT - REMAINING WORK
+========================================
+
+Every unimplemented TODO left in the codebase, grouped by module and alternating
+owner. Module 1 (ingress) and the asdb storage path are done; this covers
+everything else.
+
+At the time of writing:
+
+    53  TODO markers under src/main
+    18  methods still throwing UnsupportedOperationException
+    21  @Disabled tests under src/test
+     6  modules remaining
+
+TODO markers in the code carry the owner: TODO(averi) or TODO(shahyar). Those
+tags and this file are the same assignment; if they ever disagree, the tags in
+the code win, because that is what someone reads while working.
+
+
+CORRECTION TO AN EARLIER VERSION
+--------------------------------
+
+An earlier version of this file described core/common as sitting outside the
+alternation. It does not. C1 and C2 are units OF Module 1, at lines 118 and 122
+of module1_blueprint.txt, and its build order opens with them. Module 1 is
+listed unit by unit under FILES PER MODULE below, like every other module.
+
+
+THE ALTERNATION
+---------------
+
+Numbered in build order, starting from Module 2 since Module 1 is Averi's and
+nearly complete. The sequence is not decorative: it is the order the
+dependencies allow, and step 02 is the one that crosses between us.
+
+    01   MODULE 2   NODES              AVERI       11 TODOs, 4 stubs
+         core/nodes
+
+         Lab compute registry. Node entity, Redis heartbeats, the service, and
+         the liveness sweep that detects transitions.
+
+         N3 entity, N6/N7 heartbeats, N8 service, N9 sweep
+
+
+    02   MODULE 3   JOBS               SHAHYAR     11 TODOs, 4 stubs
+         core/jobs                                 J9 WAITS ON N7
+
+         Pipeline queue and lifecycle. Job entity, the Redis queue with atomic
+         claim, the service, and the orphan requeue sweep.
+
+         J3 entity, J5 store, J7 queue, J8 service, J9 orphan sweep
+
+
+    03   MODULE 4   OVERRIDES          AVERI        9 TODOs, 3 stubs
+         core/overrides
+
+         Game config control plane. Versioned config documents, a schema
+         registry, and save/activate with a Redis-cached read path.
+
+         O3 schema, O5 store, O8 service, ConfigVersion
+
+
+    04   MODULE 5   EGRESS             SHAHYAR      5 TODOs, 2 stubs
+         core/egress
+
+         Roblox Open Cloud client. Publishes an activated config version out to
+         the game, with timing and a realtime notification.
+
+         E2 client, E4 service, OpenCloudProperties
+
+
+    05   MODULE 6   REALTIME, FULL     AVERI        4 TODOs, 1 stub
+         core/realtime
+
+         Dashboard WebSocket hub. STOMP auth on CONNECT and the aggregate
+         snapshot endpoint the dashboard loads first.
+
+         R1 stomp auth, R2/R3 snapshot
+
+
+    06   MODULE 7   OBSERVABILITY      SHAHYAR      6 TODOs, 1 stub
+         core/observability
+
+         Metrics wrappers over MeterRegistry, an audit record, and the async
+         audit service that writes who changed what.
+
+         V3 record, V4 store, V6 service, metrics
+
+
+
+FILES PER MODULE
+----------------
+
+Every file that still needs implementing, listed so nothing hides behind a TODO
+count. A file is listed if it carries a TODO marker or a throwing stub.
+
+WHERE CLAUDE IMPLEMENTED RATHER THAN OUTLINED. Three files were written out in
+full when the standing instruction was outline only. They are marked [CLAUDE]
+below. They are working and tested, but they were not implemented by the person
+who owns the module, so they are listed here as candidates to be reviewed,
+rewritten, or replaced at the owner's discretion rather than treated as done.
+
+
+MODULE 1  INGRESS (+ MINIMAL REALTIME)                         AVERI
+
+    A. INGRESS                                              core/ingress
+
+        A1  TelemetrySnapshotRequest.java     complete, validation annotations
+        A2  GameEventRequest.java             complete
+        A3  TelemetrySnapshot.java            complete, @Indexed(expireAfter 7d)
+        A4  GameEvent.java                    complete, no TTL by design
+        A5  TelemetryStore.java               complete, the rule-5 seam
+        A6  MongoTelemetryStore.java          complete
+            AsdbTelemetryStore.java           complete. The two-transport seam
+                                              inside it is [CLAUDE].
+            AsdbHealthIndicator.java          complete
+        A7  TelemetryService.java             complete. acceptEvents is [CLAUDE].
+        A8  TelemetryController.java          complete, both endpoints [CLAUDE]
+            SecurityConfig rule                complete, ROBLOX-only telemetry
+
+    B. MINIMAL REALTIME                                     core/realtime
+
+        B1  RealtimePublisher.java            complete, interface
+        B2  StompRealtimePublisher.java       complete
+        B3  WebSocketConfig.java              STUBS. Both overrides are TODO.
+                                              See the CONFIG section: until they
+                                              are written the application does
+                                              not start.
+
+    C. ERROR CONTRACT                                       core/common
+
+        C1  ApiError.java                     [CLAUDE] implemented
+        C2  GlobalExceptionHandler.java       [CLAUDE] implemented, plus three
+                                              handlers beyond the three the
+                                              blueprint lists
+
+        Not C-series, Phase 0, complete: ApiKeyAuthFilter, ApiKeyRole,
+        PingController. ApiKeyProperties is Phase 0 but carries [CLAUDE]
+        startup validation, uncommitted.
+
+    D. TESTS
+
+        D1  Validation, 4 checks              3 of 4. Missing: negative
+                                              playerCount. Covered by
+                                              [CLAUDE] ErrorsAreUniformTest and
+                                              TelemetryHttpToAsdbTest.
+        D2  Security, 3 checks                complete, TelemetryHttpToAsdbTest
+        D3  Persistence, 3 checks             2 of 3 against asdb via the
+                                              [CLAUDE] contract test. Nothing
+                                              against Mongo (needs Docker). The
+                                              TTL index check is Mongo-only and
+                                              asdb cannot satisfy it.
+        D4  Realtime broadcast                NOT STARTED, RealtimeBroadcastTest
+                                              is disabled
+        D5  Async behaviour                   NOT STARTED, disabled in
+                                              Module1IntegrationTest
+        D6  Manual end-to-end                 scripts/fake-roblox.sh exists,
+                                              never run
+
+        Also disabled and unwritten: 5 in TelemetrySnapshotRequestValidationTest,
+        3 in RequestToDocumentMappingTest, 8 remaining in Module1IntegrationTest
+        (Docker-gated).
+
+
+MODULE 2  NODES                                                AVERI
+
+    Node.java                            N3   fields, constructor, getters, factory
+    NodeService.java                     N8   constructor, register/heartbeat/listWithStatus
+    NodeStatusSweep.java                 N9   transition detection and publish
+    RedisHeartbeatStore.java             N7   four methods, all stubs
+    HeartbeatStore.java                       interface, complete
+
+
+MODULE 3  JOBS                                                 SHAHYAR
+
+    Job.java                             J3   fields, creation constructor, lifecycle mutators
+    JobService.java                      J8   constructor, create/claim/progress/complete/fail
+    OrphanRequeueSweep.java              J9   dead-node inflight drain
+    RedisQueueStore.java                 J7   four methods, all stubs
+    JobStore.java, QueueStore.java            interfaces, complete
+    JobStatus.java, JobType.java              enums, complete
+
+
+MODULE 4  OVERRIDES                                            AVERI
+
+    ConfigSaveRequest.java               O1   validation annotations, compact constructor
+    ConfigVersion.java                   O2   final fields, all-args constructor, getters
+    ConfigSchemaRegistry.java            O3   one stub
+    ConfigStore.java                     O4   interface declared; O5 MongoConfigStore not written
+    ConfigService.java                   O8   two stubs, save and activate
+
+
+MODULE 5  EGRESS                                               SHAHYAR
+
+    OpenCloudProperties.java             E1   fields, getters, setters
+    OpenCloudClient.java                 E2   one stub
+    EgressService.java                   E4   one stub
+
+
+MODULE 6  REALTIME, FULL BUILD                                 AVERI
+
+    StompAuthInterceptor.java            R1   preSend. Currently returns the message
+                                              unchanged AND is not registered on the
+                                              inbound channel by WebSocketConfig, so
+                                              STOMP is unauthenticated today.
+    SnapshotController.java              R2   one stub
+    RealtimePublisher.java                    interface, complete
+
+
+MODULE 7  OBSERVABILITY AND AUDIT                              SHAHYAR
+
+    ShayveriMetrics.java                 V2   constructor and metric wrappers
+    AuditRecord.java                     V3   fields, constructor, getters
+    AuditService.java                    V6   one stub
+                                         V4   AuditStore not written
+
+CONFIG                                                         AVERI
+
+    Not a numbered module. Listed here because its files carry work and
+    nothing else records it.
+
+    WebSocketConfig.java                 B3   registerStompEndpoints and
+                                              configureMessageBroker are TODO
+                                              stubs. Until they are written the
+                                              application does not start:
+                                              @EnableWebSocketMessageBroker
+                                              fails with "No handlers", so every
+                                              test that boots the context fails
+                                              with it.
+    SecurityConfig.java                       filter chain complete
+    AsyncConfig.java                          executor bean complete
+    SchedulingConfig.java                     complete
+
+    Known gap, not yet written anywhere as a unit: /error is not permitted in
+    the filter chain. Spring forwards a failed request to /error to render the
+    body, and that forward arrives without the original authentication, so
+    anyRequest() rejects it and a validation failure returns 403 instead of 400.
+
+WRITTEN BY CLAUDE, NOT BY AN OWNER
+----------------------------------
+
+Everything below was written when the standing instruction was outline only.
+It compiles and passes, but none of it was authored by the person who owns the
+module, so it is listed as reviewable rather than done. Nothing here is a
+recommendation to keep it.
+
+    MAIN CODE
+
+    common/ApiError.java                 C1, implemented
+    common/GlobalExceptionHandler.java   C2, implemented, plus three handlers
+                                         beyond the three the blueprint lists
+                                         (404, ErrorResponse, ConstraintViolation)
+    common/ApiKeyProperties.java         startup validation added to a file that
+                                         was already complete. UNCOMMITTED.
+    asdb/AbpCodec.java                   the ABP/1 binary encoding
+    asdb/AsdbBinaryClient.java           pooled persistent connections
+    ingress/AsdbTelemetryStore.java      the two-transport seam inside it
+    asdb/AsdbEntityMapper.java           toMap and the collection overload
+
+    TESTS
+
+    common/ErrorsAreUniformTest.java          6 tests
+    common/ApiKeyConfigIsValidatedTest.java   7 tests. UNCOMMITTED.
+    ingress/TelemetryStoreContract.java       the 7-point store contract
+    ingress/AsdbStoreContractTest.java        contract against asdb
+    ingress/MongoStoreContractTest.java       contract against Mongo
+    asdb/AbpCodecTest.java                    13 tests
+    asdb/AsdbTransportParityTest.java         9 tests. Creates a parity_<nanos>
+                                              collection per run and never drops
+                                              it, which fills the catalog and
+                                              then fails with CatalogFull.
+
+    COMMENTS OVERWRITTEN IN FILES OWNED BY AVERI
+
+    29 of 72 java files had their comments reworded. Restored so far: GameEvent,
+    TelemetrySnapshot, MongoTelemetryStore, GameEventRequest,
+    TelemetrySnapshotRequest, and the four config files. Still carrying reworded
+    comments: TelemetryController, TelemetryService, AsdbTelemetryStore,
+    StompRealtimePublisher, RealtimePublisher, GlobalExceptionHandler, Job,
+    ConfigVersion, and the ten files touched by the TODO-shortening pass.
+
+    The original of any file is recoverable:
+        git show 7977b4c~1:<path>
+
+HOW THESE MODULES TOUCH EACH OTHER
+----------------------------------
+
+Seven couplings that are not visible from inside a single module. The first one
+crosses between us, so it needs a conversation rather than a merge.
+
+
+1. JOBS DEPENDS ON NODES, THROUGH THE INTERFACE            (cross-owner)
+
+   OrphanRequeueSweep already imports nodes.HeartbeatStore. J9 asks
+   isAlive(nodeId) for each known node and drains the inflight list of any that
+   died. It must bind to the INTERFACE, never to RedisHeartbeatStore, which the
+   file's own comment states in capitals.
+
+   CONSEQUENCE: Shahyar can build J3, J5, J7 and J8 immediately, but J9 cannot
+   be finished or tested until Averi's N6/N7 land. Agree the HeartbeatStore
+   signature before either of us starts and it stops being a blocker.
+
+
+2. THE MONGO HEALTH CHECK IS SWITCHED OFF                  (silent failure)
+
+   application.yml sets management.health.mongo.enabled: false. That was correct
+   when asdb took over telemetry and left Mongo with zero consumers, because the
+   indicator reported DOWN for a database nothing used and dragged
+   /actuator/health down with it.
+
+   CONSEQUENCE: four of the six modules bring Mongo back: N4/N5, J5, O5, V4.
+   Whoever lands the first of them must flip that flag back to true in the same
+   commit. Miss it and health reports green while Mongo is down, which an
+   orchestrator will believe.
+
+
+3. JOBS AND EGRESS BOTH PUBLISH THROUGH REALTIME           (shared bean)
+
+   JobService, OrphanRequeueSweep and EgressService all import
+   realtime.RealtimePublisher. The implementation (StompRealtimePublisher)
+   already exists from Module 1, so nothing here is blocked.
+
+   CONSEQUENCE: the interface is now shared across both owners and two modules.
+   Changing its signature breaks the other person's build, so treat it as frozen
+   unless we both agree.
+
+
+4. INJECTING A BARE EXECUTOR FAILS TO START                (startup trap)
+
+   JobService (J8) and AuditService (V6) both want an Executor. The application
+   already failed to boot once for exactly this: four candidate beans and no way
+   to choose. TelemetryService was fixed with @Qualifier("telemetryExecutor").
+
+   CONSEQUENCE: qualify the injection point in both modules. An unqualified
+   Executor parameter takes the whole application down at startup, not at the
+   call site.
+
+
+5. RULE 5: STORAGE LIVES BEHIND A SEAM                     (architecture rule)
+
+   Nothing outside a store implementation may import a Mongo API. That rule is
+   what let the entire telemetry backend swap to asdb by changing one property,
+   with TelemetryService and the controller untouched.
+
+   CONSEQUENCE: every new module keeps the pattern: an interface (NodeStore,
+   JobStore, ConfigStore, AuditStore) plus an implementation. Services depend on
+   the interface only.
+
+
+6. THREE MODULES SHARE REDIS                               (shared infra)
+
+   Nodes uses it for heartbeats (N7), Jobs for the priority queue and inflight
+   lists (J7), Overrides for the config read cache. Redis health is deliberately
+   left ENABLED, unlike Mongo, because those beans are live.
+
+   CONSEQUENCE: key namespaces must not collide, and Redis being down now fails
+   two owners' modules at once. J7's claim is specified as a single atomic
+   BLMOVE; the file warns against decomposing it, since a non-atomic claim hands
+   one job to two nodes.
+
+
+7. ASDB AND MONGO NOW COEXIST                              (storage split)
+
+   Telemetry writes go to asdb over its binary protocol. Every other module in
+   this list is specified against Mongo. Both will be running.
+
+   CONSEQUENCE: asdb needs its own process for telemetry to work at all:
+
+       asdb telemetry.db --port 7070 --abp-port 7071 \
+            --ttl telemtry_snapshots.receivedAt=7d
+
+   The TTL flag is not optional, and there is no error if it is missing, only a
+   collection that grows forever. The protocol itself is documented in
+   PROTOCOL.txt in the asdb repo.
+
+
+HOW THE COUNTS WERE TAKEN
+-------------------------
+
+From the working tree: "TODO(" markers and UnsupportedOperationException stubs
+under src/main, and @Disabled tests under src/test. Re-run with:
+
+    grep -rc "TODO(shahyar)" src/main --include="*.java"
+    grep -rc "TODO(averi)"   src/main --include="*.java"
