@@ -209,7 +209,7 @@ MODULE 6  REALTIME, FULL BUILD                                 AVERI
 
 MODULE 7  OBSERVABILITY AND AUDIT                              SHAHYAR
 
-    ShayveriMetrics.java                 V2   constructor and metric wrappers
+    AsCoreMetrics.java                 V2   constructor and metric wrappers
     AuditRecord.java                     V3   fields, constructor, getters
     AuditService.java                    V6   one stub
                                          V4   AuditStore not written

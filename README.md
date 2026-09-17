@@ -1,6 +1,6 @@
-# SHAYVERI CORE
+# AS-CORE
 
-**SHAYVERI CORE** (Compute Orchestration & Rendering Engine) is the Spring Boot backend of the SHAYVERI Roblox pipeline. It currently ingests and broadcasts live game telemetry, with planned modules for compute jobs, node coordination, versioned game configuration, and Roblox Open Cloud publishing.
+**AS-CORE** (Compute Orchestration & Rendering Engine) is the Spring Boot backend of the SHAYVERI Roblox pipeline. It currently ingests and broadcasts live game telemetry, with planned modules for compute jobs, node coordination, versioned game configuration, and Roblox Open Cloud publishing.
 
 CORE is the single source of truth for the system. Roblox game servers and lab compute nodes are clients that push data in and poll or receive configuration out. A React dashboard is the planned read/write control surface over WebSocket and REST. CORE alone talks to the Roblox Open Cloud API.
 

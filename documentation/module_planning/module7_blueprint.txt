@@ -15,7 +15,7 @@ V1. Build additions (consumed dependencies, build.gradle.kts):
     implementation("net.logstash.logback:logstash-logback-encoder:7.4")
         - JSON log encoding for V6.
 
-V2. ShayveriMetrics                 (the one metrics entry point)
+V2. AsCoreMetrics                 (the one metrics entry point)
     Thin named wrappers so modules never sprinkle raw registry calls:
       telemetryAccepted()        counter shayveri_telemetry_ingest_total
       openCloudOutcome(ok)       counter shayveri_opencloud_calls_total{outcome}

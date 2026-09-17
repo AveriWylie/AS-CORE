@@ -12,6 +12,6 @@ import org.springframework.stereotype.Component;
  * Needs V1 dependency micrometer-registry-prometheus for /actuator/prometheus to serve.
  */
 @Component
-public class ShayveriMetrics {
+public class AsCoreMetrics {
 	// TODO(shahyar): constructor + metric wrappers per blueprint V2.
 }

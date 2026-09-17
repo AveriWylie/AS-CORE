@@ -21,7 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.TestPropertySource;
 
 /**
- * The whole path, for real: HTTP POST into SHAYVERI, out to asdb.
+ * The whole path, for real: HTTP POST into AS-CORE, out to asdb.
  *
  * <p>WHAT THIS COVERS THAT NOTHING ELSE DID. Every other test stops short of
  * the edge. The mapper tests check generated strings, the wiring test calls the

@@ -1,4 +1,4 @@
-SHAYVERI CORE - BUILD PLAN
+AS-CORE - BUILD PLAN
 ===========================
 Compute Orchestration & Rendering Engine. The Java backend for the SHAYVERI
 Roblox pipeline. This document is the plan and the contract: the React
@@ -11,7 +11,7 @@ SYSTEM CONTEXT
 ----------------------------------------------------------------------
 
 [ Roblox Game Servers ] --HTTP--> +----------------------+ --WebSocket--> [ React Dashboard ]
-[ Lab Compute Nodes   ] --HTTP--> |    SHAYVERI CORE     |
+[ Lab Compute Nodes   ] --HTTP--> |       AS-CORE        |
                                   | (Java / Spring Boot) | --HTTPS--> [ Roblox Open Cloud API ]
                                   +----------+-----------+
                                              |

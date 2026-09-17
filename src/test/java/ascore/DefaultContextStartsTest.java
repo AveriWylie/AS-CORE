@@ -7,7 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 /**
  * Does the application start at all, on whatever application.yml selects?
  *
- * <p>WHY THIS EXISTS. Until this was written, SHAYVERI had never been booted,
+ * <p>WHY THIS EXISTS. Until this was written, AS-CORE had never been booted,
  * and it did not boot. Two separate startup failures were sitting in the code,
  * neither of which any existing test could see, because every other test either
  * exercises a class in isolation or needs Docker and gets skipped:
