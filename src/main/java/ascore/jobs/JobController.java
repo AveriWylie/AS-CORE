@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,8 +31,8 @@ public class JobController {
 	public JobController(JobService js) {this.js = js;}
 
 	@PostMapping("/api/jobs")
-	public ResponseEntity<Map<String, String>> create(@Valid @RequestBody JobCreateRequest request) {
-		return ResponseEntity.accepted().body(Map.of("id", js.create(request).getId()));
+	public ResponseEntity<Map<String, String>> create(@Valid @RequestBody JobCreateRequest request, Authentication caller) {
+		return ResponseEntity.accepted().body(Map.of("id", js.create(request, caller.getName().toLowerCase()).getId()));
 	}
 
 	// 200 with the job, or 204 once the claim window passes with nothing claimable

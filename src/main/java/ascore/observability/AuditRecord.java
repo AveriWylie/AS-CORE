@@ -14,7 +14,38 @@ import org.springframework.data.mongodb.core.mapping.Document;
  */
 @Document("audit")
 public class AuditRecord {
+
 	@Id
 	private String id;
-	// TODO(shahyar): fields + constructor + getters per blueprint V3.
+	@Indexed
+	private final Instant at;
+	private final String who;
+	private final String action;
+	private final String target;
+	private final Map<String, Object> before;
+	private final Map<String, Object> after;
+
+	public AuditRecord(Instant at, String who, String action, String target, Map<String, Object> before, Map<String, Object> after) {
+		this.at = at;
+		this.who = who;
+		this.action = action;
+		this.target = target;
+		this.before = before == null ? Map.of() : Map.copyOf(before);
+		this.after = after == null ? Map.of() : Map.copyOf(after);
+	}
+
+	public String getId() {return id;}
+
+	public Instant getAt() {return at;}
+
+	public String getWho() {return who;}
+
+	public String getAction() {return action;}
+
+	public String getTarget() {return target;}
+
+	public Map<String, Object> getBefore() {return before;}
+
+	public Map<String, Object> getAfter() {return after;}
+
 }

@@ -43,15 +43,17 @@ public class ConfigService {
 	private final EgressService egress;
 	private final RealtimePublisher publisher;
 	private final ObjectMapper json;
+	private final AuditService audit;
 
 	public ConfigService(ConfigSchemaRegistry schema, ConfigStore store, ActiveConfigCache cache,
-			EgressService egress, RealtimePublisher publisher, ObjectMapper json) {
+			EgressService egress, RealtimePublisher publisher, ObjectMapper json, AuditService audit) {
 		this.schema = schema;
 		this.store = store;
 		this.cache = cache;
 		this.egress = egress;
 		this.publisher = publisher;
 		this.json = json;
+		this.audit = audit;
 	}
 
 	public int save(ConfigSaveRequest req, String who) {
@@ -59,6 +61,7 @@ public class ConfigService {
 		if (!problems.isEmpty()) throw new ConfigRejectedException(problems);
 		int version = store.latestVersionNumber(req.placeId(), req.namespace()) + 1;
 		store.saveVersion(new ConfigVersion(req.placeId(), req.namespace(), version, req.values(), who, Instant.now()));
+		audit.audit(who, "config.save", req.placeId() + "/" + req.namespace(), null, Map.of("version", version));
 		return version;
 	}
 
@@ -71,6 +74,7 @@ public class ConfigService {
 		if (store.findVersion(placeId, namespace, version).isEmpty()) {
 			throw new NoSuchElementException("no version " + version + " of " + namespace + " for " + placeId);
 		}
+		Optional<Integer> previous = store.getActivePointer(placeId, namespace);
 		store.setActivePointer(placeId, namespace, version);
 
 		if (placeId.equals(GLOBAL)) cache.evictAll();
@@ -78,6 +82,8 @@ public class ConfigService {
 
 		egress.publishConfigActivated(placeId, version);
 		publisher.publish("/topic/config", Map.of("placeId", placeId, "namespace", namespace, "version", version));
+		audit.audit(who, "config.activate", placeId + "/" + namespace,
+				previous.map(v -> Map.<String, Object>of("version", v)).orElse(null), Map.of("version", version));
 	}
 
 	public ActiveConfig getActive(String placeId) {

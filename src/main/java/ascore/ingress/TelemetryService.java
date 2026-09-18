@@ -1,5 +1,6 @@
 package ascore.ingress;
 
+import ascore.observability.AsCoreMetrics;
 import ascore.realtime.RealtimePublisher;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
@@ -33,6 +34,7 @@ public class TelemetryService {
 	private final TelemetryStore ts;
 	private final RealtimePublisher rp;
 	private final Executor ex;
+	private final AsCoreMetrics metrics;
 
 	/*
 	 * {@code @Qualifier} is REQUIRED here, not decoration. Enabling WebSocket/STOMP
@@ -42,16 +44,18 @@ public class TelemetryService {
 	 * whole application fails to start with NoUniqueBeanDefinitionException,
 	 * on any storage backend.
 	 */
-	public TelemetryService(TelemetryStore ts, RealtimePublisher rp, @Qualifier("telemetryExecutor") Executor ex) {
+	public TelemetryService(TelemetryStore ts, RealtimePublisher rp, @Qualifier("telemetryExecutor") Executor ex, AsCoreMetrics metrics) {
 		this.ts = ts;
 		this .rp = rp;
 		this.ex = ex;
+		this.metrics = metrics;
 
 	}
 
 	public void accept(TelemetrySnapshotRequest request) {
 		Instant recievedAt = Instant.now();
 		TelemetrySnapshot snapshot = TelemetrySnapshot.from(request, recievedAt);
+		metrics.telemetryAccepted();
 		// Executor                              ← the interface: one method, execute(Runnable)
 		//   ↑ implemented by
 		// newVirtualThreadPerTaskExecutor()     ← the implementation your @Bean returns

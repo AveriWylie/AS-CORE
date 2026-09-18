@@ -16,6 +16,8 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-security")
+	implementation("net.logstash.logback:logstash-logback-encoder:7.4")
+	runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.security:spring-security-test")
@@ -26,3 +28,6 @@ dependencies {
 }
 
 tasks.withType<Test> {useJUnitPlatform()}
+
+// V7: bootRun logs as plain text; everything else logs as JSON
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {systemProperty("spring.profiles.active", "dev")}

@@ -1,5 +1,6 @@
 package ascore.egress;
 
+import ascore.observability.AsCoreMetrics;
 import ascore.realtime.RealtimePublisher;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -19,18 +20,20 @@ public class EgressService {
 	private final RealtimePublisher publisher;
 	private final OpenCloudProperties props;
 	private final TokenBucket bucket;
+	private final AsCoreMetrics metrics;
 
 	@Autowired
-	public EgressService(OpenCloudClient client, RealtimePublisher publisher, OpenCloudProperties props) {
-		this(client, publisher, props, new TokenBucket(props.getBucketCapacity(), props.getRefillPerSecond(), System::nanoTime));
+	public EgressService(OpenCloudClient client, RealtimePublisher publisher, OpenCloudProperties props, AsCoreMetrics metrics) {
+		this(client, publisher, props, new TokenBucket(props.getBucketCapacity(), props.getRefillPerSecond(), System::nanoTime), metrics);
 	}
 
 	// tests hand in a bucket on a fake clock
-	EgressService(OpenCloudClient client, RealtimePublisher publisher, OpenCloudProperties props, TokenBucket bucket) {
+	EgressService(OpenCloudClient client, RealtimePublisher publisher, OpenCloudProperties props, TokenBucket bucket, AsCoreMetrics metrics) {
 		this.client = client;
 		this.publisher = publisher;
 		this.props = props;
 		this.bucket = bucket;
+		this.metrics = metrics;
 	}
 
 	/**
@@ -55,12 +58,15 @@ public class EgressService {
 			}
 			try {
 				client.publish(placeId, version);
+				metrics.openCloudOutcome(true);
 				publisher.publish("/topic/config", Map.of("placeId", placeId, "version", version, "delivery", "PUSHED"));
 				return;
 			} catch (IllegalStateException e) {
+				metrics.openCloudOutcome(false);
 				reason = e.getMessage();
 				break;
 			} catch (RuntimeException e) {
+				metrics.openCloudOutcome(false);
 				reason = e.getMessage();
 				log.warn("open cloud push attempt {} for {} v{} failed: {}", attempt + 1, placeId, version, reason);
 			}

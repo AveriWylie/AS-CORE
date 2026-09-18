@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  V7. JSON to stdout by default, one object per line, so a log collector can read fields
+  without a parser. The dev profile keeps Spring Boot's plain console pattern; bootRun turns
+  it on in build.gradle.kts.
+-->
+<configuration>
+	<include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+	<springProfile name="dev">
+		<include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+		<root level="INFO">
+			<appender-ref ref="CONSOLE"/>
+		</root>
+	</springProfile>
+
+	<springProfile name="!dev">
+		<appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+			<encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+		</appender>
+		<root level="INFO">
+			<appender-ref ref="JSON"/>
+		</root>
+	</springProfile>
+</configuration>

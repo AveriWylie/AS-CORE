@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.Executor;
+import ascore.observability.AsCoreMetrics;
+import ascore.observability.AuditService;
 import ascore.realtime.RealtimePublisher;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,22 +43,29 @@ public class JobService {
 	private final Executor executor;
 	private final Duration claimTimeout;
 	private final long backoffBaseMs;
+	private final AsCoreMetrics metrics;
+	private final AuditService audit;
 
 	public JobService(JobStore jobs, QueueStore queue, RealtimePublisher publisher,
 			@Qualifier("telemetryExecutor") Executor executor,
 			@Value("${shayveri.jobs.claim-timeout-seconds:20}") long claimTimeoutSeconds,
-			@Value("${shayveri.jobs.backoff-base-ms:1000}") long backoffBaseMs) {
+			@Value("${shayveri.jobs.backoff-base-ms:1000}") long backoffBaseMs,
+			AsCoreMetrics metrics, AuditService audit) {
 		this.jobs = jobs;
 		this.queue = queue;
 		this.publisher = publisher;
 		this.executor = executor;
 		this.claimTimeout = Duration.ofSeconds(claimTimeoutSeconds);
 		this.backoffBaseMs = backoffBaseMs;
+		this.metrics = metrics;
+		this.audit = audit;
 	}
 
-	public Job create(JobCreateRequest request) {
+	public Job create(JobCreateRequest request, String who) {
 		Job job = jobs.save(Job.from(request, Instant.now()));
 		queue.enqueue(job.getType(), job.getId(), job.getPriority());
+		metrics.jobTransition("NEW", job.getStatus().name());
+		audit.audit(who, "job.create", job.getId(), null, Map.of("type", job.getType().name(), "mapId", job.getMapId()));
 		publisher.publish("/topic/jobs", Map.of("event", "queued", "jobId", job.getId()));
 		return job;
 	}
@@ -66,25 +75,31 @@ public class JobService {
 		if (id.isEmpty()) return Optional.empty();
 
 		Job job = jobs.findById(id.get()).orElseThrow(() -> new NoSuchElementException("no job " + id.get()));
+		JobStatus from = job.getStatus();
 		job.claim(request.nodeId(), Instant.now());
 		jobs.save(job);
+		transitioned(from, job);
 		publisher.publish("/topic/jobs", Map.of("event", "claimed", "jobId", job.getId(), "nodeId", request.nodeId()));
 		return Optional.of(job);
 	}
 
 	public Job progress(String id, ProgressRequest request) {
 		Job job = active(id);
+		JobStatus from = job.getStatus();
 		job.start(Instant.now());
 		jobs.save(job);
+		transitioned(from, job);
 		publisher.publish("/topic/jobs/" + id, Map.of("pct", request.pct(), "log", request.log() == null ? "" : request.log()));
 		return job;
 	}
 
 	public Job complete(String id, CompleteRequest request) {
 		Job job = active(id);
+		JobStatus from = job.getStatus();
 		queue.ack(job.getClaimedBy(), id);
 		job.complete(request.resultRef(), request.resultMeta(), Instant.now());
 		jobs.save(job);
+		transitioned(from, job);
 		publisher.publish("/topic/jobs", Map.of("event", "done", "jobId", id));
 		publisher.publish("/topic/jobs/" + id, Map.of("status", "DONE"));
 		return job;
@@ -97,11 +112,13 @@ public class JobService {
 	 */
 	public Job fail(String id, FailRequest request) {
 		Job job = active(id);
+		JobStatus from = job.getStatus();
 		String node = job.getClaimedBy();
 
 		if (job.getAttempts() <= job.getMaxRetries()) {
 			job.requeue(request.error());
 			jobs.save(job);
+			transitioned(from, job);
 			long delay = backoffBaseMs * (1L << job.getAttempts());
 			executor.execute(() -> {
 				sleep(delay);
@@ -114,6 +131,7 @@ public class JobService {
 		queue.ack(node, id);
 		job.fail(request.error(), Instant.now());
 		jobs.save(job);
+		transitioned(from, job);
 		publisher.publish("/topic/alerts", Map.of("event", "job-failed", "jobId", id, "error", request.error()));
 		return job;
 	}
@@ -133,6 +151,10 @@ public class JobService {
 			throw new IllegalStateException("job " + id + " is " + job.getStatus());
 		}
 		return job;
+	}
+
+	private void transitioned(JobStatus from, Job job) {
+		if (from != job.getStatus()) metrics.jobTransition(from.name(), job.getStatus().name());
 	}
 
 	private static void sleep(long ms) {
