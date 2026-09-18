@@ -30,6 +30,8 @@ public class SecurityConfig {
 						// first match wins, so specific rules go above anyRequest().
 						// This line is why the controller never checks identity.
 						.requestMatchers("/api/telemetry/**").hasRole(ApiKeyRole.ROBLOX.name())
+						.requestMatchers("/api/nodes/register", "/api/nodes/*/heartbeat").hasRole(ApiKeyRole.NODE.name())
+						.requestMatchers("/api/nodes").hasRole(ApiKeyRole.DASH.name())
 						.anyRequest().authenticated())
 						.addFilterBefore(new ApiKeyAuthFilter(apiKeyProperties), UsernamePasswordAuthenticationFilter.class);
 

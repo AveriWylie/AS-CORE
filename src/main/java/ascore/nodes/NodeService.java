@@ -1,5 +1,9 @@
 package ascore.nodes;
 
+import java.time.Instant;
+import java.util.List;
+import java.util.Set;
+
 import org.springframework.stereotype.Service;
 
 /**
@@ -16,5 +20,37 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class NodeService {
-	// TODO(averi): constructor + register/heartbeat/listWithStatus per blueprint N8.
+
+	private final NodeStore nodes;
+	private final HeartbeatStore heartbeats;
+
+	public NodeService(NodeStore nodes, HeartbeatStore heartbeats) {
+		this.nodes = nodes;
+		this.heartbeats = heartbeats;
+	}
+
+	public Node register(NodeRegisterRequest request) {
+		Instant now = Instant.now();
+		Instant registeredAt = nodes.findById(request.nodeId()).map(Node::getRegisteredAt).orElse(now);
+		Node node = Node.from(request, registeredAt, now);
+		nodes.save(node);
+		return node;
+	}
+
+	// false for an unregistered node, which the controller turns into a 404
+	public boolean heartbeat(String nodeId, HeartbeatRequest request) {
+		if (nodes.findById(nodeId).isEmpty()) return false;
+		heartbeats.recordHeartbeat(nodeId, request.currentLoad());
+		return true;
+	}
+
+	public List<NodeView> listWithStatus() {
+		Set<String> alive = heartbeats.aliveNodeIds();
+		return nodes.findAll().stream()
+				.map(n -> alive.contains(n.getNodeId())
+						? new NodeView(n, NodeView.Status.UP, heartbeats.loadOf(n.getNodeId()).orElse(null))
+						: new NodeView(n, NodeView.Status.DOWN, null))
+				.toList();
+	}
+
 }

@@ -21,7 +21,41 @@ import org.springframework.data.mongodb.core.mapping.Document;
  */
 @Document("nodes")
 public class Node {
+
 	@Id
 	private String nodeId;
-	// TODO(averi): fields + constructor + getters + static factory per blueprint N3.
+	private String hostname;
+	private Map<String, Object> capabilities;
+	private Integer maxConcurrentJobs;
+	private Instant registeredAt;
+	private Instant lastRegisteredAt;
+
+	public Node(String nodeId, String hostname, Map<String, Object> capabilities, Integer maxConcurrentJobs,
+			Instant registeredAt, Instant lastRegisteredAt) {
+		this.nodeId = nodeId;
+		this.hostname = hostname;
+		this.capabilities = capabilities;
+		this.maxConcurrentJobs = maxConcurrentJobs;
+		this.registeredAt = registeredAt;
+		this.lastRegisteredAt = lastRegisteredAt;
+	}
+
+	// registeredAt is carried over on re-registration; lastRegisteredAt is always the current call
+	public static Node from(NodeRegisterRequest request, Instant registeredAt, Instant lastRegisteredAt) {
+		return new Node(request.nodeId(), request.hostname(), request.capabilities(),
+				request.maxConcurrentJobs(), registeredAt, lastRegisteredAt);
+	}
+
+	public String getNodeId() {return nodeId;}
+
+	public String getHostname() {return hostname;}
+
+	public Map<String, Object> getCapabilities() {return Map.copyOf(capabilities);}
+
+	public Integer getMaxConcurrentJobs() {return maxConcurrentJobs;}
+
+	public Instant getRegisteredAt() {return registeredAt;}
+
+	public Instant getLastRegisteredAt() {return lastRegisteredAt;}
+
 }

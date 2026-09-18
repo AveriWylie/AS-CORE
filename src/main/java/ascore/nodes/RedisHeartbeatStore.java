@@ -1,7 +1,10 @@
 package ascore.nodes;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -24,16 +27,35 @@ import java.util.Set;
  */
 @Component
 public class RedisHeartbeatStore implements HeartbeatStore {
+
+	private static final String HB = "node:hb:";
+	private static final String LOAD = "node:load:";
+
+	private final StringRedisTemplate redis;
+	private final Duration ttl;
+
+	// the TTL is a property so T3 can shorten it; 45s is the production value
+	public RedisHeartbeatStore(StringRedisTemplate redis, @Value("${shayveri.nodes.heartbeat-ttl-seconds:45}") long ttlSeconds) {
+		this.redis = redis;
+		this.ttl = Duration.ofSeconds(ttlSeconds);
+	}
+
 	@Override public void recordHeartbeat(String nodeId, int load) {
-		throw new UnsupportedOperationException("TODO(averi): N7");
+		redis.opsForValue().set(HB + nodeId, Instant.now().toString(), ttl);
+		redis.opsForValue().set(LOAD + nodeId, Integer.toString(load), ttl);
 	}
-	@Override public boolean isAlive(String nodeId) {
-		throw new UnsupportedOperationException("TODO(averi): N7");
-	}
+
+	@Override public boolean isAlive(String nodeId) {return Boolean.TRUE.equals(redis.hasKey(HB + nodeId));}
+
 	@Override public Set<String> aliveNodeIds() {
-		throw new UnsupportedOperationException("TODO(averi): N7");
+		Set<String> keys = redis.keys(HB + "*");
+		if (keys == null) return Set.of();
+		return keys.stream().map(k -> k.substring(HB.length())).collect(Collectors.toUnmodifiableSet());
 	}
+
 	@Override public Optional<Integer> loadOf(String nodeId) {
-		throw new UnsupportedOperationException("TODO(averi): N7");
+		String load = redis.opsForValue().get(LOAD + nodeId);
+		return load == null ? Optional.empty() : Optional.of(Integer.parseInt(load));
 	}
+
 }

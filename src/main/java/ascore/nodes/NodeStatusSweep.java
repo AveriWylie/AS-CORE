@@ -1,10 +1,14 @@
 package ascore.nodes;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import ascore.realtime.RealtimePublisher;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -29,8 +33,36 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class NodeStatusSweep {
+
+	private static final Logger log = LoggerFactory.getLogger(NodeStatusSweep.class);
+
+	private final HeartbeatStore heartbeats;
+	private final RealtimePublisher publisher;
+
+	// only ever touched by the scheduler thread, and fixedDelay never overlaps runs
+	private Set<String> previousAlive = new HashSet<>();
+
+	public NodeStatusSweep(HeartbeatStore heartbeats, RealtimePublisher publisher) {
+		this.heartbeats = heartbeats;
+		this.publisher = publisher;
+	}
+
 	@Scheduled(fixedDelay = 15000)
 	public void sweep() {
-		// TODO(averi): transition detection + publish per blueprint N9.
+		Set<String> current;
+
+		try {
+			current = heartbeats.aliveNodeIds();
+		} catch (DataAccessException e) {
+			log.warn("node sweep skipped, heartbeat store unreachable: {}", e.getMessage());
+			return;
+		}
+
+		for (String id : current) if (!previousAlive.contains(id)) publish(id, "UP");
+		for (String id : previousAlive) if (!current.contains(id)) publish(id, "DOWN");
+		previousAlive = current;
 	}
+
+	private void publish(String nodeId, String status) {publisher.publish("/topic/nodes", Map.of("nodeId", nodeId, "status", status));}
+
 }
