@@ -1,5 +1,6 @@
 package ascore.overrides;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -16,7 +17,50 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class ConfigSchemaRegistry {
-	public java.util.List<String> validate(String namespace, java.util.Map<String, Object> values) {
-		throw new UnsupportedOperationException("TODO(averi): O3");
+
+	enum Kind { NUMBER, BOOLEAN, STRING }
+
+	// v1 schema. A key missing here cannot be saved, so a new setting starts with a line here
+	private static final Map<String, Map<String, Kind>> SCHEMA = Map.of(
+			"weapons", Map.of(
+					"damageMultiplier", Kind.NUMBER,
+					"fireRate", Kind.NUMBER,
+					"friendlyFire", Kind.BOOLEAN),
+			"spawns", Map.of(
+					"zombieSpeed", Kind.NUMBER,
+					"spawnRate", Kind.NUMBER,
+					"maxZombies", Kind.NUMBER),
+			"graphics", Map.of(
+					"preset", Kind.STRING,
+					"shadows", Kind.BOOLEAN,
+					"renderDistance", Kind.NUMBER));
+
+	/**
+	 * Returns key -> what is wrong with it, empty when the values are acceptable. Keyed by
+	 * name so the rejection lands in ApiError.fieldErrors and names the typo directly.
+	 */
+	public Map<String, String> validate(String namespace, Map<String, Object> values) {
+		Map<String, Kind> known = SCHEMA.get(namespace);
+		if (known == null) return Map.of("namespace", "unknown namespace '" + namespace + "'");
+		Map<String, String> problems = new LinkedHashMap<>();
+
+		values.forEach((key, value) -> {
+			Kind kind = known.get(key);
+			if (kind == null) problems.put(key, "unknown key in " + namespace);
+			else if (!matches(kind, value)) problems.put(key, "expected " + kind.name().toLowerCase());
+		});
+
+		return problems;
 	}
+
+	public Set<String> namespaces() {return SCHEMA.keySet();}
+
+	private static boolean matches(Kind kind, Object value) {
+		return switch (kind) {
+			case NUMBER -> value instanceof Number;
+			case BOOLEAN -> value instanceof Boolean;
+			case STRING -> value instanceof String;
+		};
+	}
+
 }

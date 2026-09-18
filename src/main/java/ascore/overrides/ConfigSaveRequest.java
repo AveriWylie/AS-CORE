@@ -9,8 +9,13 @@ import java.util.Map;
  */
 public record ConfigSaveRequest(
 		String placeId,
-		String namespace,
-		Map<String, Object> values
+		@NotBlank String namespace,
+		@NotNull Map<String, Object> values
 ) {
-	// TODO(averi): validation annotations + compact constructor per blueprint O1.
+
+	// a missing or blank placeId is the global config, which every place falls back to
+	public ConfigSaveRequest {
+		placeId = placeId == null || placeId.isBlank() ? ConfigService.GLOBAL : placeId;
+	}
+
 }

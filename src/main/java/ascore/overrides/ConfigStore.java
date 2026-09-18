@@ -8,7 +8,6 @@ import java.util.Optional;
  * (Mongo is the truth; Redis O6 is only its cache) - keeping the pointer out of the version
  * documents is what preserves version immutability (activating never touches a version row).
  * Consumes: nothing - ours.
- * TODO(averi): implement via O5 MongoConfigStore + repositories.
  */
 public interface ConfigStore {
 	void saveVersion(ConfigVersion version);
