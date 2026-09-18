@@ -101,12 +101,10 @@ class RealtimeBroadcastTest {
 		post("123");
 		Object frame = received.poll(5, TimeUnit.SECONDS);
 		assertNotNull(frame, "no frame arrived on /topic/telemetry/123");
-
 		// a different place must NOT reach this subscription. Topic isolation is
 		// the half that a naive broadcast still passes without.
 		post("456");
 		assertNull(received.poll(2, TimeUnit.SECONDS), "a snapshot for 456 leaked onto the 123 topic");
-
 		session.disconnect();
 	}
 

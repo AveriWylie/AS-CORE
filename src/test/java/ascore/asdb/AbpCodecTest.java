@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
  */
 class AbpCodecTest {
 
-	/** Roughly what a TelemetrySnapshot serialises to, which is what this protocol carries all day. */
+	// Roughly what a TelemetrySnapshot serialises to, which is what this protocol carries all day.
 	private static Map<String, Object> telemetryDocument() {
 		Map<String, Object> metrics = new LinkedHashMap<>();
 		metrics.put("kills", 7);

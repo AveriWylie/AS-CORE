@@ -14,42 +14,12 @@ import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Talks to asdb over ABP/1, the binary protocol, on a pool of persistent
- * connections.
+ * Talks to an asdb server over HTTP. See documentation/architecture/asdb.md
+ * for where this sits and why it does not parse the response.
  *
- * <p>WHY THIS EXISTS RATHER THAN {@link AsdbClient}. Measured against the same
- * database, per single-document insert:
- *
- * <pre>
- *   HTTP, one connection per request     68.82 us     90% of it protocol
- *   ABP, connection reused               20.13 us     65% of it protocol
- *   ABP, batch of 100                     1.55 us     44x the HTTP path
- * </pre>
- *
- * Half of the HTTP number was opening and closing a TCP connection the previous
- * request had just thrown away. asdb's PROTOCOL.txt carries the full table.
- * {@code saveEvents} sends batches, so it lands on the 44x row.
- *
- * <p>WHY A POOL AND NOT ONE SHARED CONNECTION. asdb replies to requests in the
- * order they arrive on a connection, so two threads writing to one socket would
- * interleave their frames and read each other's replies. A pool gives each
- * caller a connection to itself for the duration of a request.
- *
- * <p>WHY {@link ReentrantLock} AND NOT {@code synchronized}. This application
- * runs on virtual threads ({@code spring.threads.virtual.enabled: true}) and
- * {@code TelemetryService} dispatches writes onto them. In Java 21 a virtual
- * thread that blocks inside {@code synchronized} PINS its carrier platform
- * thread, so a slow write would hold a real OS thread hostage and the pool
- * would throttle the whole executor. {@code ReentrantLock} parks the virtual
- * thread and releases the carrier. This is the kind of detail that costs
- * nothing to get right now and is very hard to diagnose later.
- *
- * <p>WHY A POOLED SOCKET IS RETRIED ONCE. A connection can be perfectly valid
- * when it goes into the pool and dead when it comes out, because asdb restarted
- * in between. The failure looks like a write succeeding into a closed socket and
- * a read returning EOF. Retrying once on a FRESH connection turns a restart into
- * a hiccup instead of a lost batch. It is deliberately once: a genuine outage
- * should surface, not be retried into a stall.
+ * <p>Not annotated as a Spring component on purpose: it is constructed by
+ * {@code AsdbTelemetryStore}, which is the only thing that needs it, so its
+ * lifetime is tied to the bean that uses it rather than floating in the context.
  */
 public class AsdbBinaryClient implements AutoCloseable {
 
@@ -70,13 +40,9 @@ public class AsdbBinaryClient implements AutoCloseable {
 		this.maxIdle = Math.max(1, maxIdle);
 	}
 
-	/** Inserts documents into a collection. Returns how many asdb reported. */
+	// Inserts documents into a collection. Returns how many asdb reported.
 	public long insert(String collection, List<? extends Map<String, Object>> documents) {
-
-		if (documents.isEmpty()) {
-			return 0;
-		}
-
+		if (documents.isEmpty()) return 0;
 		AbpCodec.Reply reply = roundTrip(AbpCodec.OP_INSERT, AbpCodec.insertPayload(collection, documents));
 
 		if (reply.opcode() == AbpCodec.OP_ERROR) {
@@ -86,9 +52,8 @@ public class AsdbBinaryClient implements AutoCloseable {
 		return reply.affected();
 	}
 
-	/** Runs one ASL statement. Used for DDL and for reads; inserts should use {@link #insert}. */
+	// Runs one ASL statement. Used for DDL and for reads; inserts should use #insert.
 	public AbpCodec.Reply execute(String statement) {
-
 		AbpCodec.Reply reply = roundTrip(AbpCodec.OP_EXEC, AbpCodec.execPayload(statement));
 
 		if (reply.opcode() == AbpCodec.OP_ERROR) {
@@ -111,11 +76,9 @@ public class AsdbBinaryClient implements AutoCloseable {
 	 * boundary the mapper documents. Use {@link #insert} for writes, where
 	 * values travel as length-prefixed bytes and are never parsed at all.
 	 */
-	public List<Map<String, Object>> query(String asl) {
-		return execute(asl).documents();
-	}
+	public List<Map<String, Object>> query(String asl) {return execute(asl).documents();}
 
-	/** True when a connection can be made and the server answers a ping. Never throws. */
+	// True when a connection can be made and the server answers a ping. Never throws.
 	public boolean isHealthy() {
 		try {
 			return roundTrip(AbpCodec.OP_PING, new byte[0]).opcode() == AbpCodec.OP_PONG;
@@ -148,7 +111,6 @@ public class AsdbBinaryClient implements AutoCloseable {
 	}
 
 	private AbpCodec.Reply attempt(byte opcode, byte[] payload, boolean forceFresh) throws IOException {
-
 		Conn conn = forceFresh ? connect() : borrow();
 
 		try {
@@ -165,7 +127,6 @@ public class AsdbBinaryClient implements AutoCloseable {
 	}
 
 	private Conn borrow() throws IOException {
-
 		lock.lock();
 
 		try {
@@ -182,9 +143,7 @@ public class AsdbBinaryClient implements AutoCloseable {
 	}
 
 	private void release(Conn conn) {
-
 		lock.lock();
-
 		try {
 			if (closed || idle.size() >= maxIdle) {
 				conn.closeQuietly();
@@ -197,7 +156,6 @@ public class AsdbBinaryClient implements AutoCloseable {
 	}
 
 	private Conn connect() throws IOException {
-
 		Socket socket = new Socket();
 		socket.connect(new InetSocketAddress(host, port), connectTimeoutMs);
 		/*
@@ -217,7 +175,6 @@ public class AsdbBinaryClient implements AutoCloseable {
 
 	@Override
 	public void close() {
-
 		lock.lock();
 
 		try {
@@ -233,7 +190,7 @@ public class AsdbBinaryClient implements AutoCloseable {
 		}
 	}
 
-	/** A socket plus its buffered streams, kept together so they are discarded together. */
+	// A socket plus its buffered streams, kept together so they are discarded together.
 	private static final class Conn {
 
 		private final Socket socket;

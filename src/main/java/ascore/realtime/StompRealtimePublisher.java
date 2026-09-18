@@ -61,8 +61,5 @@ public class StompRealtimePublisher implements RealtimePublisher {
     }
 
     @Override
-    public void publish(String topic, Object payload) {
-        messagingTemplate.convertAndSend(topic, payload);
-    }
-
+    public void publish(String topic, Object payload) {messagingTemplate.convertAndSend(topic, payload);}
 }

@@ -21,17 +21,17 @@ import java.util.Map;
  * exact bytes are asserted, so a change on either side fails a test rather than
  * corrupting data.
  *
- * <p>WHY BINARY AT ALL. Over HTTP, 90% of an insert was protocol: 61.88us of a
+ *
+ * <p>Generally: it precomputes data into the form the server's protocol
+ * dictates. Values are written as length-prefixed byte runs, so there is no
+ * escaping step to get right; the text encoding reaches the same result
+ * through AsdbEntityMapper.
+ *
+ * </p>Over HTTP, 90% of an insert was protocol: 61.88us of a
  * 68.82us request, half of it opening and closing a TCP connection the previous
  * request had just discarded. On the binary path with requests pipelined that
  * falls to 0.12us of 7.07us, which is 2%. asdb's PROTOCOL.txt has the full
  * table and the method.
- *
- * <p>WHAT THIS BUYS OVER {@link AsdbEntityMapper}, beyond speed: values are
- * written as length-prefixed byte runs and are never lexed, so the escaping
- * that {@code AsdbEntityMapper.quote} has to get right every single time has
- * nothing to get wrong here. A placeId of {@code x" } | delete //} is data,
- * structurally, not because a routine remembered to escape it.
  *
  * <p>Everything is little-endian, matching asdb's storage layer.
  */
@@ -57,8 +57,6 @@ final class AbpCodec {
 	static final byte TAG_STRING = 0x05;
 	static final byte TAG_ARRAY = 0x06;
 	static final byte TAG_DOCUMENT = 0x07;
-
-	/** Matches MAX_FRAME in wire.rs. A larger reply is a bug or an attack, not a document. */
 	static final int MAX_FRAME = 64 * 1024 * 1024;
 
 	/* ---------- writing ---------- */
@@ -185,7 +183,6 @@ final class AbpCodec {
 	 * measured 1.55us of storage work per document. It does not show up.
 	 */
 	static void putDocumentBody(ByteArrayOutputStream out, Map<?, ?> doc) {
-
 		// The ENTRIES are sorted, not the keys with a lookup afterwards: a map
 		// with non-String keys (customMetrics is filled from user JSON and is
 		// only String-keyed by convention) would look up a stringified key that
@@ -206,7 +203,7 @@ final class AbpCodec {
 		}
 	}
 
-	/** A complete frame: length, opcode, payload. */
+	// A complete frame: length, opcode, payload.
 	static byte[] frame(byte opcode, byte[] payload) {
 		byte[] out = new byte[payload.length + 5];
 		int len = payload.length + 1;
@@ -219,7 +216,7 @@ final class AbpCodec {
 		return out;
 	}
 
-	/** An OP_INSERT payload: collection, count, then the document bodies. */
+	// An OP_INSERT payload: collection, count, then the document bodies.
 	static byte[] insertPayload(String collection, List<? extends Map<String, Object>> docs) {
 		ByteArrayOutputStream out = new ByteArrayOutputStream(256 * Math.max(1, docs.size()));
 		putString(out, collection);
@@ -230,7 +227,7 @@ final class AbpCodec {
 		return out.toByteArray();
 	}
 
-	/** An OP_EXEC payload: one length-prefixed ASL statement. */
+	// An OP_EXEC payload: one length-prefixed ASL statement.
 	static byte[] execPayload(String statement) {
 		ByteArrayOutputStream out = new ByteArrayOutputStream(statement.length() + 8);
 		putString(out, statement);
@@ -239,9 +236,8 @@ final class AbpCodec {
 
 	/* ---------- reading ---------- */
 
-	/** A decoded reply frame. */
+	// A decoded reply frame.
 	record Reply(byte opcode, byte[] payload) {
-
 		long affected() {
 			long n = 0;
 			for (int i = 7; i >= 0; i--) {
@@ -273,7 +269,6 @@ final class AbpCodec {
 	 * OutOfMemoryError that takes the application down with it.
 	 */
 	static Reply readFrame(DataInputStream in) throws IOException {
-
 		int len = Integer.reverseBytes(in.readInt());
 
 		if (len <= 0 || len > MAX_FRAME) {
@@ -287,7 +282,7 @@ final class AbpCodec {
 		return new Reply(buf[0], payload);
 	}
 
-	/** A position in a payload. Package-private so tests can decode fixtures. */
+	// position in a payload. Package-private so tests can decode fixtures
 	static final class Cursor {
 
 		private final byte[] buf;
@@ -305,9 +300,7 @@ final class AbpCodec {
 		was caught by hostileLengthIsRejected rather than by inspection.
 		*/
 		private void need(int n) {
-			if (n < 0 || n > buf.length - pos) {
-				throw new AsdbClient.AsdbException("asdb frame ended mid-value");
-			}
+			if (n < 0 || n > buf.length - pos) throw new AsdbClient.AsdbException("asdb frame ended mid-value");
 		}
 
 		int u32() {
@@ -365,13 +358,8 @@ final class AbpCodec {
 		}
 
 		Map<String, Object> documentBody() {
-
 			int n = u32();
-
-			if (n < 0 || n > buf.length - pos) {
-				throw new AsdbClient.AsdbException("asdb sent a field count of " + n);
-			}
-
+			if (n < 0 || n > buf.length - pos) throw new AsdbClient.AsdbException("asdb sent a field count of " + n);
 			Map<String, Object> doc = new LinkedHashMap<>(Math.max(4, n * 2));
 
 			for (int i = 0; i < n; i++) {

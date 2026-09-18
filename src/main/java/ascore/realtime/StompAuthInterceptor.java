@@ -18,6 +18,6 @@ import org.springframework.stereotype.Component;
 public class StompAuthInterceptor implements ChannelInterceptor {
 	@Override
 	public Message<?> preSend(Message<?> message, org.springframework.messaging.MessageChannel channel) {
-		return message; // TODO(averi): preSend per blueprint R1.
+		return message;
 	}
 }

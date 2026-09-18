@@ -13,69 +13,22 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * A {@link TelemetryStore} backed by asdb instead of MongoDB.
+ * A TelemetryStore backed by asdb instead of MongoDB. See
+ * documentation/architecture/asdb.md for where this sits, the two transports,
+ * and where asdb does not match Mongo.
  *
- * <p>THIS IS WHAT RULE 5 BOUGHT. {@code TelemetryStore} is the seam, so nothing
- * above it changes: {@code TelemetryService} still calls {@code saveSnapshot}
- * and {@code saveEvents}, the controller is untouched, and the entity classes
- * keep their Spring Data annotations. Swapping the whole storage engine is one
- * property.
+ * SELECTING IT. This and MongoTelemetryStore implement the same interface, so
+ * exactly one must be active or Spring fails to start with an ambiguous-bean
+ * error. That is what the @ConditionalOnProperty pair does.
  *
- * <p>SELECTING IT. Both this and {@code MongoTelemetryStore} implement the same
- * interface, so exactly one must be active or Spring fails to start with an
- * ambiguous-bean error. That is what the {@code @ConditionalOnProperty} pair
- * does.
+ * application.yml sets shayveri.store: asdb, so this is active unless
+ * overridden. Mongo is one flag away:
  *
- * <p>ASDB IS NOW THE DEFAULT: application.yml sets {@code shayveri.store: asdb},
- * so this is the active implementation unless something overrides it. Mongo is
- * the fallback rather than the other way round, and is one flag away:
- *
- * <pre>
  *   ./gradlew bootRun --args='--shayveri.store=mongo'
- * </pre>
  *
- * <p>Note the code still treats an ABSENT property as Mongo
- * ({@code matchIfMissing = true} on MongoTelemetryStore). That is deliberate:
- * the default lives in configuration, where it is visible and overridable,
- * rather than being compiled in.
- *
- * <p>WHAT IS NOT EQUIVALENT TO MONGO, stated here rather than discovered later:
- *
- * <ul>
- * <li><b>TTL is configured on the server, not by the annotation.</b>
- * {@code @Indexed(expireAfter = "7d")} on {@code TelemetrySnapshot.receivedAt}
- * is read by Spring Data and would be read by Mongo. asdb has no TTL index; its
- * server runs a sweeper configured with a command-line flag:
- * <pre>asdb telemetry.db --ttl telemtry_snapshots.receivedAt=7d</pre>
- * So the annotation stays true as documentation but stops being the thing that
- * enforces it. If the flag is missing, the collection grows forever and nothing
- * fails. That is the sharpest edge in this whole adapter.</li>
- *
- * <li><b>No generated ids.</b> Mongo fills a null {@code @Id} with an ObjectId.
- * asdb does not, and the mapper omits the field instead. Nothing in the ingress
- * path reads ids back, so this is currently invisible, but a read path would
- * have to deal with it.</li>
- *
- * <li><b>Writes are not transactional.</b> {@code saveEvents} sends one batched
- * statement, so it is one request, but asdb has no transactions: a failure
- * partway through leaves the earlier documents written. Mongo's
- * {@code saveAll} is not atomic across documents either, so this is a match in
- * practice rather than a regression.</li>
- *
- * <li><b>One writer at a time.</b> The asdb server serializes every statement
- * behind a mutex, so concurrent telemetry posts queue rather than run in
- * parallel.</li>
- * </ul>
- *
- * <p>TWO TRANSPORTS, ONE STORE. asdb speaks HTTP on one port and ABP/1, its
- * binary protocol, on another, from the same process against the same database.
- * {@code shayveri.store.asdb.protocol} selects which this store uses and
- * defaults to {@code binary}, because measured against the same database a
- * single insert costs 68.82us over HTTP and 20.13us over ABP, and a batch of
- * 100 costs 1.55us per document, which is 44x the HTTP path.
- * {@code saveEvents} sends batches, so it lands on that row. Set the property
- * to {@code http} to fall back; the numbers and the method are in asdb's
- * PROTOCOL.txt.
+ * An ABSENT property still means Mongo (matchIfMissing = true on
+ * MongoTelemetryStore). The default lives in configuration, where it is
+ * visible and overridable, rather than compiled in.
  */
 @Component
 @ConditionalOnProperty(name = "shayveri.store", havingValue = "asdb")
@@ -122,10 +75,7 @@ public class AsdbTelemetryStore implements TelemetryStore {
 		// An empty batch is a no-op rather than a malformed statement. The
 		// service layer can hand over whatever the request contained without
 		// having to check first.
-		if (events == null || events.isEmpty()) {
-			return;
-		}
-
+		if (events == null || events.isEmpty()) return;
 		transport.insert(AsdbEntityMapper.collectionOf(GameEvent.class), events);
 	}
 
@@ -139,18 +89,14 @@ public class AsdbTelemetryStore implements TelemetryStore {
 	 * the same documents; {@code AsdbTransportParityTest} is what enforces it.
 	 */
 	private interface Transport {
-
 		void insert(String collection, List<?> entities);
-
-		/** One ASL statement, used for startup DDL. */
+		// One ASL statement, used for startup DDL.
 		void ddl(String statement);
-
 		boolean healthy();
 	}
 
-	/** ASL text over HTTP. The original path, kept as the fallback and for curl parity. */
+	// ASL text over HTTP. The original path, kept as the fallback and for curl parity
 	private record HttpTransport(AsdbClient client) implements Transport {
-
 		@Override
 		public void insert(String collection, List<?> entities) {
 			client.execute(AsdbEntityMapper.insertStatement(collection, entities));
@@ -163,9 +109,8 @@ public class AsdbTelemetryStore implements TelemetryStore {
 		public boolean healthy() {return client.isHealthy();}
 	}
 
-	/** Binary documents over ABP/1. Values are never lexed, so nothing needs escaping. */
+	// Binary documents over ABP/1. Values are never lexed, so nothing needs escaping
 	private record BinaryTransport(AsdbBinaryClient client) implements Transport {
-
 		@Override
 		public void insert(String collection, List<?> entities) {
 
@@ -202,7 +147,6 @@ public class AsdbTelemetryStore implements TelemetryStore {
 	 * here; it surfaces on the first write instead.
 	 */
 	private void ensureSchema() {
-
 		if (!transport.healthy()) {
 			log.error("asdb is UNREACHABLE at {}. Telemetry writes will fail until it is running. "
 					+ "Start it with: asdb telemetry.db --port 7070 --abp-port 7071 "
@@ -223,7 +167,7 @@ public class AsdbTelemetryStore implements TelemetryStore {
 	}
 
 
-	/*
+	/**
 	 * Startup DDL is not fatal, because "already exists" is the normal case on
 	 * every restart after the first and asdb reports it as an error rather than
 	 * a no-op. Logged at DEBUG for that reason: by the time this runs the

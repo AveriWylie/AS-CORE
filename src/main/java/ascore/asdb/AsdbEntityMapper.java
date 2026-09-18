@@ -71,7 +71,6 @@ public final class AsdbEntityMapper {
 
 	// The collection an entity class maps to, from {@code @Document}
 	public static String collectionOf(Class<?> type) {
-
 		Document annotation = type.getAnnotation(Document.class);
 
 		if (annotation == null) {
@@ -90,7 +89,7 @@ public final class AsdbEntityMapper {
 		return name;
 	}
 
-	/** Field names carrying a plain {@code @Indexed}, so indexes can be created at startup. */
+	// Field names carrying a plain @Indexed, so indexes can be created at startup.
 	public static List<String> indexedFieldsOf(Class<?> type) {
 		return java.util.Arrays.stream(type.getDeclaredFields())
 				.filter(f -> f.isAnnotationPresent(org.springframework.data.mongodb.core.index.Indexed.class))
@@ -98,7 +97,7 @@ public final class AsdbEntityMapper {
 				.toList();
 	}
 
-	/** {@code from <collection> | insert { ... }} for one entity. */
+	// from <collection> | insert { ... } for one entity.
 	public static String insertStatement(Object entity) {
 		String collection = collectionOf(entity.getClass());
 		return "from " + collection + " | insert " + documentLiteral(entity);
@@ -171,7 +170,6 @@ public final class AsdbEntityMapper {
 	 * order; it exists to make the encoding reproducible on this side.
 	 */
 	public static java.util.LinkedHashMap<String, Object> toMap(Object entity) {
-
 		java.util.LinkedHashMap<String, Object> map = new java.util.LinkedHashMap<>();
 
 		for (Field field : entity.getClass().getDeclaredFields()) {
@@ -202,9 +200,8 @@ public final class AsdbEntityMapper {
 		return map;
 	}
 
-	/** An entity as an ASL document literal, by reflection over its declared fields. */
+	// An entity as an ASL document literal, by reflection over its declared fields.
 	public static String documentLiteral(Object entity) {
-
 		StringBuilder out = new StringBuilder("{ ");
 		boolean first = true;
 
@@ -346,7 +343,6 @@ public final class AsdbEntityMapper {
 	 * see a raw byte inside a string literal.
 	 */
 	static String quote(String raw) {
-
 		StringBuilder out = new StringBuilder(raw.length() + 2).append('"');
 
 		for (int i = 0; i < raw.length(); i++) {
@@ -376,7 +372,6 @@ public final class AsdbEntityMapper {
 	 * is not worth failing an entire telemetry batch over.
 	 */
 	static String backtick(String name) {
-
 		boolean plain = !name.isEmpty() && (Character.isLetter(name.charAt(0)) || name.charAt(0) == '_');
 
 		for (int i = 0; plain && i < name.length(); i++) {

@@ -43,7 +43,6 @@ public class TelemetryService {
 	 * on any storage backend.
 	 */
 	public TelemetryService(TelemetryStore ts, RealtimePublisher rp, @Qualifier("telemetryExecutor") Executor ex) {
-
 		this.ts = ts;
 		this .rp = rp;
 		this.ex = ex;
@@ -51,7 +50,6 @@ public class TelemetryService {
 	}
 
 	public void accept(TelemetrySnapshotRequest request) {
-
 		Instant recievedAt = Instant.now();
 		TelemetrySnapshot snapshot = TelemetrySnapshot.from(request, recievedAt);
 		// Executor                              ← the interface: one method, execute(Runnable)

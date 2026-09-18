@@ -45,7 +45,7 @@ class AsdbTransportParityTest {
 		return new AsdbBinaryClient(HOST, ABP_PORT, Duration.ofSeconds(2), Duration.ofSeconds(5), 8);
 	}
 
-	/** A collection name unique per run, so repeated runs do not accumulate. */
+	// A collection name unique per run, so repeated runs do not accumulate.
 	private String collection;
 
 	@BeforeEach
@@ -227,7 +227,7 @@ class AsdbTransportParityTest {
 		}
 	}
 
-	/** The one document with this placeId, decoded. */
+	// The one document with this placeId, decoded.
 	private Map<String, Object> only(AsdbBinaryClient client, String placeId) {
 		List<Map<String, Object>> docs = client
 				.execute("from " + collection + " | where placeId == " + AsdbEntityMapper.quote(placeId))

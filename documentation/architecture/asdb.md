@@ -94,3 +94,25 @@ nothing to get wrong.
 
 The full derivation, including what was measured and rejected, is in
 PROTOCOL.txt in the asdb repo.
+
+WHERE ASDB DOES NOT MATCH MONGO
+
+TTL is configured on the server, not by the annotation. @Indexed(expireAfter = "7d") on
+TelemetrySnapshot.receivedAt is read by Spring Data and would be read by Mongo. asdb has no TTL index; its
+server runs a sweeper configured with a command-line flag:
+
+    asdb telemetry.db --ttl telemtry_snapshots.receivedAt=7d
+
+So the annotation stays true as documentation but stops being the thing that enforces it. If the flag is
+missing, the collection grows forever and nothing fails. That is the sharpest edge in this whole adapter.
+
+No generated ids. Mongo fills a null @Id with an ObjectId. asdb does not, and the mapper omits the field
+instead. Nothing in the ingress path reads ids back, so this is currently invisible, but a read path would
+have to deal with it.
+
+Writes are not transactional. saveEvents sends one batched statement, so it is one request, but asdb has no
+transactions: a failure partway through leaves the earlier documents written. Mongo's saveAll is not atomic
+across documents either, so this is a match in practice rather than a regression.
+
+One writer at a time. The asdb server serializes every statement behind a mutex, so concurrent telemetry
+posts queue rather than run in parallel.

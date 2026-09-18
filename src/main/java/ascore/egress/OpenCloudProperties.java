@@ -2,8 +2,12 @@ package ascore.egress;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-// E1 - Open Cloud config from application.yml. Consumes: @ConfigurationProperties (ApiKeyProperties pattern).
 @ConfigurationProperties(prefix = "shayveri.opencloud")
 public class OpenCloudProperties {
-	// TODO(shahyar): fields + getters/setters per blueprint E1.
+
+    private String MSUrl = "http://messaging-service";
+
+    public String getMSUrl() {return MSUrl;}
+
+    public void setMSUrl(String MSUrl) {this.MSUrl = MSUrl;}
 }

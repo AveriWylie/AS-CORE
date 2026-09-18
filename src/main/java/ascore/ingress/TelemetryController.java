@@ -36,7 +36,7 @@ import java.util.List;
  */
 @RestController
 @Validated
-public class TelemetryController {
+public class  TelemetryController {
 
 	private final TelemetryService ts;
 
@@ -61,6 +61,8 @@ public class TelemetryController {
 	 * List<@Valid GameEventRequest>, not @Valid List<...>. Per-element
 	 * validation inside a collection is opt-in, and it is the class-level
 	 * {@code @Validated} that makes the inner annotation take effect.
+	 *
+	 * To see why its ResponseEntity<Void> rather then void keyword see java-type-notes
 	 */
 	@PostMapping("/api/telemetry/events")
 	public ResponseEntity<Void> events(@RequestBody List<@Valid GameEventRequest> events) {

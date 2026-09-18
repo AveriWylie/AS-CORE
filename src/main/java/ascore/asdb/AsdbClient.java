@@ -25,7 +25,7 @@ import java.time.Duration;
  * documents back, parse it then.
  *
  * <p>Not annotated as a Spring component on purpose: it is constructed by
- * {@link AsdbTelemetryStore}, which is the only thing that needs it, so its
+ * {@code AsdbTelemetryStore}, which is the only thing that needs it, so its
  * lifetime is tied to the bean that uses it rather than floating in the context.
  */
 public class AsdbClient {
@@ -53,7 +53,6 @@ public class AsdbClient {
 	 *                  see the injection note there.
 	 */
 	public String execute(String statement) {
-
 		HttpRequest request = HttpRequest.newBuilder()
 				.uri(queryEndpoint)
 				.timeout(requestTimeout)
@@ -83,7 +82,7 @@ public class AsdbClient {
 		return response.body();
 	}
 
-	/** True when the server answers its health endpoint. Never throws. */
+	// True when the server answers its health endpoint. Never throws.
 	public boolean isHealthy() {
 		try {
 			HttpRequest request = HttpRequest.newBuilder()
@@ -104,7 +103,7 @@ public class AsdbClient {
 		return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
 	}
 
-	/** Unchecked so it matches the Spring Data repository style the rest of the ingress code uses. */
+	// Unchecked so it matches the Spring Data repository style the rest of the ingress code uses.
 	public static class AsdbException extends RuntimeException {
 
 		public AsdbException(String message) {super(message);}

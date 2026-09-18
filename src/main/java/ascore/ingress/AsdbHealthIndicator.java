@@ -26,7 +26,6 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(name = "shayveri.store", havingValue = "asdb")
 public class AsdbHealthIndicator implements HealthIndicator {
-
 	private final AsdbTelemetryStore store;
 
 	public AsdbHealthIndicator(AsdbTelemetryStore store) {this.store = store;}

@@ -45,7 +45,6 @@ class HealthReportsTheActiveStoreTest {
 	}
 
 	private java.util.Set<String> healthComponentNames() {
-
 		var h = health.health();
 
 		if (h instanceof org.springframework.boot.actuate.health.CompositeHealth composite) {
