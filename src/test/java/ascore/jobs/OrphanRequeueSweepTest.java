@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import ascore.nodes.InMemoryHeartbeatStore;
+import ascore.observability.InMemoryAuditStore;
+import ascore.observability.TestObservability;
 
 // T3 and T5. A node is dead here simply by never sending a heartbeat
 class OrphanRequeueSweepTest {
@@ -16,13 +18,14 @@ class OrphanRequeueSweepTest {
 	private final InMemoryQueueStore queue = new InMemoryQueueStore();
 	private final InMemoryHeartbeatStore heartbeats = new InMemoryHeartbeatStore();
 	private final List<Object> alerts = new ArrayList<>();
-	private final JobService service = new JobService(jobs, queue, (topic, payload) -> { }, Runnable::run, 0, 0);
+	private final JobService service = new JobService(jobs, queue, (topic, payload) -> { }, Runnable::run, 0, 0,
+			TestObservability.metrics(queue), TestObservability.audit(new InMemoryAuditStore()));
 	private final OrphanRequeueSweep sweep = new OrphanRequeueSweep(heartbeats, queue, jobs, (topic, payload) -> {
 		if (topic.equals("/topic/alerts")) alerts.add(payload);
 	});
 
 	private Job claimedBy(String nodeId) {
-		Job job = service.create(new JobCreateRequest(JobType.CUSTOM, "map-1", 0, null, 3));
+		Job job = service.create(new JobCreateRequest(JobType.CUSTOM, "map-1", 0, null, 3), "dash");
 		service.claim(new ClaimRequest(nodeId, Map.of())).orElseThrow();
 		return job;
 	}

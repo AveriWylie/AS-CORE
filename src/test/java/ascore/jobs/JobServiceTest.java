@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import ascore.observability.InMemoryAuditStore;
+import ascore.observability.TestObservability;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -19,9 +21,10 @@ class JobServiceTest {
 	private final InMemoryJobStore jobs = new InMemoryJobStore();
 	private final InMemoryQueueStore queue = new InMemoryQueueStore();
 	private final List<String> topics = new ArrayList<>();
-	private final JobService service = new JobService(jobs, queue, (topic, payload) -> topics.add(topic), Runnable::run, 0, 0);
+	private final JobService service = new JobService(jobs, queue, (topic, payload) -> topics.add(topic), Runnable::run, 0, 0,
+			TestObservability.metrics(queue), TestObservability.audit(new InMemoryAuditStore()));
 
-	private Job create(JobType type) {return service.create(new JobCreateRequest(type, "map-1", 0, null, 3));}
+	private Job create(JobType type) {return service.create(new JobCreateRequest(type, "map-1", 0, null, 3), "dash");}
 
 	private static ClaimRequest node(String nodeId) {return new ClaimRequest(nodeId, Map.of());}
 

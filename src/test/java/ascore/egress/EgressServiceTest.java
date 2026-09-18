@@ -13,6 +13,8 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import ascore.jobs.InMemoryQueueStore;
+import ascore.observability.TestObservability;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +43,7 @@ class EgressServiceTest {
 
 	private EgressService service(int capacity) {
 		return new EgressService(client, (topic, payload) -> published.add(Map.of("topic", topic, "payload", payload)),
-				props, new TokenBucket(capacity, 1, clock::get));
+				props, new TokenBucket(capacity, 1, clock::get), TestObservability.metrics(new InMemoryQueueStore()));
 	}
 
 	private static OpenCloudProperties properties() {

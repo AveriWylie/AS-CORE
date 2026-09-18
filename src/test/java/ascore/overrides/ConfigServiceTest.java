@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import ascore.egress.EgressService;
+import ascore.observability.InMemoryAuditStore;
+import ascore.observability.TestObservability;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +24,7 @@ class ConfigServiceTest {
 	private final EgressService egress = mock(EgressService.class);
 	private final List<String> topics = new ArrayList<>();
 	private final ConfigService service = new ConfigService(new ConfigSchemaRegistry(), store, cache, egress,
-			(topic, payload) -> topics.add(topic), new ObjectMapper());
+			(topic, payload) -> topics.add(topic), new ObjectMapper(), TestObservability.audit(new InMemoryAuditStore()));
 
 	private int save(String placeId, Map<String, Object> values) {return service.save(new ConfigSaveRequest(placeId, "spawns", values), "dash");}
 
