@@ -36,6 +36,7 @@ public class SecurityConfig {
 						.requestMatchers("/api/jobs").hasRole(ApiKeyRole.DASH.name())
 						.requestMatchers("/api/config/active").hasRole(ApiKeyRole.ROBLOX.name())
 						.requestMatchers("/api/config/**").hasRole(ApiKeyRole.DASH.name())
+						.requestMatchers("/api/snapshot").hasRole(ApiKeyRole.DASH.name())
 						.anyRequest().authenticated())
 						.addFilterBefore(new ApiKeyAuthFilter(apiKeyProperties), UsernamePasswordAuthenticationFilter.class);
 

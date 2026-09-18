@@ -1,7 +1,9 @@
 package ascore.overrides;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import org.springframework.stereotype.Component;
 
 // O5 - the Mongo adapter behind ConfigStore, the A6/N5/J5 pattern
@@ -38,6 +40,13 @@ public class MongoConfigStore implements ConfigStore {
 	@Override
 	public Optional<Integer> getActivePointer(String placeId, String namespace) {
 		return pointers.findById(ActivePointer.idFor(placeId, namespace)).map(ActivePointer::getVersion);
+	}
+
+	@Override
+	public Map<String, Map<String, Integer>> activePointers() {
+		Map<String, Map<String, Integer>> active = new TreeMap<>();
+		for (ActivePointer p : pointers.findAll()) active.computeIfAbsent(p.getPlaceId(), k -> new TreeMap<>()).put(p.getNamespace(), p.getVersion());
+		return active;
 	}
 
 }

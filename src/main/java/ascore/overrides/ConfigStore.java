@@ -1,6 +1,7 @@
 package ascore.overrides;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -16,4 +17,7 @@ public interface ConfigStore {
 	List<ConfigVersion> history(String placeId);
 	void setActivePointer(String placeId, String namespace, int version);
 	Optional<Integer> getActivePointer(String placeId, String namespace);
+
+	// placeId -> namespace -> active version, for every pointer that exists
+	Map<String, Map<String, Integer>> activePointers();
 }

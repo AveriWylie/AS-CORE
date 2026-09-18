@@ -23,4 +23,7 @@ public interface QueueStore {
 
 	/** Drop an in-flight id (successful completion). */
 	void ack(String nodeId, String jobId);
+
+	// ids waiting in both bands of one type; in-flight ids are not counted
+	long depth(JobType type);
 }

@@ -54,12 +54,18 @@ import org.springframework.stereotype.Component;
 public class StompRealtimePublisher implements RealtimePublisher {
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final AlertBuffer alerts;
 
     // See spring simp messaging template
-    public StompRealtimePublisher(SimpMessagingTemplate messagingTemplate) {
+    public StompRealtimePublisher(SimpMessagingTemplate messagingTemplate, AlertBuffer alerts) {
         this.messagingTemplate = messagingTemplate;
+        this.alerts = alerts;
     }
 
+    // R3: alerts are kept as they go out, so the snapshot sees exactly what subscribers saw
     @Override
-    public void publish(String topic, Object payload) {messagingTemplate.convertAndSend(topic, payload);}
+    public void publish(String topic, Object payload) {
+        if (topic.equals("/topic/alerts")) alerts.add(payload);
+        messagingTemplate.convertAndSend(topic, payload);
+    }
 }

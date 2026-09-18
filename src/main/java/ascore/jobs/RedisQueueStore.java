@@ -122,6 +122,12 @@ public class RedisQueueStore implements QueueStore {
 
 	@Override public void ack(String nodeId, String jobId) {redis.execute(ACK, List.of(INFLIGHT + nodeId, ORIGIN), jobId);}
 
+	@Override public long depth(JobType type) {
+		Long high = redis.opsForList().size(QUEUE + type + ":high");
+		Long normal = redis.opsForList().size(QUEUE + type);
+		return (high == null ? 0 : high) + (normal == null ? 0 : normal);
+	}
+
 	// every high band before any normal one, so priority work is claimed first across all types
 	private static List<String> sources(List<JobType> types) {
 		List<String> sources = new ArrayList<>();

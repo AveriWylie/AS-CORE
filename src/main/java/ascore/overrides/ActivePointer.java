@@ -28,6 +28,10 @@ class ActivePointer {
 
 	static String idFor(String placeId, String namespace) {return placeId + ":" + namespace;}
 
+	String getPlaceId() {return placeId;}
+
+	String getNamespace() {return namespace;}
+
 	int getVersion() {return version;}
 
 }
