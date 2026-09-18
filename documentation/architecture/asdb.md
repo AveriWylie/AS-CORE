@@ -116,3 +116,63 @@ across documents either, so this is a match in practice rather than a regression
 
 One writer at a time. The asdb server serializes every statement behind a mutex, so concurrent telemetry
 posts queue rather than run in parallel.
+
+THE DOCUMENT STORE
+
+Telemetry only ever inserts. Nodes, jobs, config and audit also read back, filter, sort and overwrite, so
+they share one generic piece in the asdb folder instead of each growing its own mapping.
+
+AsdbDocumentStore<T> is one entity type's collection. It creates the collection and its indexes at startup
+(the id, every @Indexed field, plus any the adapter names), inserts over the binary protocol, overwrites
+with an ASL update, and reads documents back into the entity. Values in a where clause go through eq, in,
+atLeast and atMost, which escape them with the same AsdbEntityMapper.literal the text path uses.
+
+Reading back is the half telemetry never needed. Fields are set by type: epoch millis back to Instant,
+names back to enums, and whole numbers inside maps narrowed to Integer where they fit, since that is what
+Jackson and Mongo hand back for the same values. Entities are created without calling a constructor, as
+Spring Data does, then filled field by field.
+
+The four adapters sit in their own modules and are thin:
+
+    AsdbNodeStore    nodes            upsert on nodeId, find by id, find all
+    AsdbJobStore     jobs             insert when new, overwrite by id, filter by status, mapId, claimedBy
+    AsdbConfigStore  config_versions  insert, find by place + namespace + version, latest by order + limit
+                     config_active    upsert on "placeId:namespace", list all
+    AsdbAuditStore   audit            insert, range on at, optional action, newest first
+
+They share one AsdbBinaryClient bean from config/AsdbConfig, built from the same shayveri.store.asdb
+properties. AsdbTelemetryStore keeps its own client and its HTTP option.
+
+Each has a Mongo twin, and shayveri.store picks which pair is live, exactly as for telemetry. With asdb
+selected nothing connects to Mongo, so Mongo does not need to be running. Redis is still needed either way;
+see below.
+
+Each store has a contract test (NodeStoreContract, JobStoreContract, ConfigStoreContract,
+AuditStoreContract) run once against asdb and once against Mongo. The asdb runs use port 7071 unless
+ASDB_TEST_ABP_PORT says otherwise, so they can point at a scratch server.
+
+WHAT THE ADAPTERS WORK AROUND, WHICH IS ASDB'S BACKLOG
+
+Each of these is handled on the Java side today and would be better as a feature in asdb.
+
+No upsert. Saving a node or moving a config pointer is an update, then an insert if nothing matched. The
+method is synchronized, so one AS-CORE process cannot insert the same id twice, but two processes could.
+A native upsert would make it one statement.
+
+unique is parsed, not enforced. Mongo's unique index on (placeId, namespace, version) is what stops two
+config saves landing on the same version. AsdbConfigStore checks and inserts under a lock instead, which
+again only holds within one process.
+
+No generated ids. Telemetry leaves a null id out. These stores read ids back, so a null String id is filled
+with a UUID before insert.
+
+No binary update. Inserts travel as bytes, but an overwrite is ASL text, so every value in it passes
+through the escaper. An OP_UPDATE would remove that.
+
+WHY REDIS STAYS
+
+Redis is not only storage here. Node liveness is a key that expires 45 seconds after the last heartbeat,
+and a job claim is one atomic move from a queue list to a node's in-flight list. asdb's TTL is a sweeper
+over a timestamp field, set per collection from the command line (--ttl nodes.at=45s would parse), so a
+heartbeat would only expire when the sweeper next ran, not at 45 seconds. It also has no atomic list move.
+Replacing Redis would mean building both into asdb rather than writing another adapter.
