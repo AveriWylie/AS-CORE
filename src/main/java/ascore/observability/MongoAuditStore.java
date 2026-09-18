@@ -3,10 +3,12 @@ package ascore.observability;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 // V5 - the Mongo adapter behind AuditStore
 @Component
+@ConditionalOnProperty(name = "shayveri.store", havingValue = "mongo", matchIfMissing = true)
 public class MongoAuditStore implements AuditStore {
 
 	private final AuditRepository repository;
