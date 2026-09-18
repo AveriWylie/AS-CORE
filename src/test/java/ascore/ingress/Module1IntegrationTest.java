@@ -94,20 +94,30 @@ class Module1IntegrationTest {
 
 	// ---- D2: security --------------------------------------------------
 
-	@Disabled("TODO(averi): after A8 - no X-Api-Key header -> expect 4xx (unauthenticated)")
 	@Test
-	void telemetryWithoutKeyIsRejected() {
-		// TODO(averi): perform the POST with no header; andExpect 401/403.
+	void telemetryWithoutKeyIsRejected() throws Exception {
+		mockMvc.perform(post("/api/telemetry")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"placeId\":\"p\",\"jobId\":\"j\",\"playerCount\":1,\"serverFps\":60.0}"))
+				.andExpect(status().is4xxClientError());
 	}
 
-	@Disabled("TODO(averi): after A8 step 4 - dev-dash-key on /api/telemetry -> 403 (wrong role)")
 	@Test
-	void telemetryWithDashKeyIsRejected() {
+	void telemetryWithDashKeyIsRejected() throws Exception {
+		mockMvc.perform(post("/api/telemetry")
+						.header("X-Api-Key", "dev-dash-key")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"placeId\":\"p\",\"jobId\":\"j\",\"playerCount\":1,\"serverFps\":60.0}"))
+				.andExpect(status().isForbidden());
 	}
 
-	@Disabled("TODO(averi): after A8 - dev-roblox-key + valid body -> 202")
 	@Test
-	void telemetryWithRobloxKeyIsAccepted() {
+	void telemetryWithRobloxKeyIsAccepted() throws Exception {
+		mockMvc.perform(post("/api/telemetry")
+						.header("X-Api-Key", "dev-roblox-key")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"placeId\":\"p\",\"jobId\":\"j\",\"playerCount\":1,\"serverFps\":60.0}"))
+				.andExpect(status().isAccepted());
 	}
 
 	// ---- D1 (web layer): validation through the real pipeline ----------
@@ -162,10 +172,6 @@ class Module1IntegrationTest {
 	}
 
 	// ---- D5: async behavior ----------------------------------------------
-
-	@Disabled("TODO(averi): after A7 - the 202 must not wait on storage. One approach: a test TelemetryStore bean whose saveSnapshot sleeps 5s; assert the mockMvc call returns in well under 1s")
-	@Test
-	void acceptReturnsBeforePersistenceCompletes() {
-	}
+	// Lives in TelemetryAcceptIsAsyncTest, since it needs no container.
 
 }

@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,6 +56,20 @@ class AsdbTransportParityTest {
 		}
 		collection = "parity_" + System.nanoTime();
 		http.execute("create " + collection + " {}");
+	}
+
+	/**
+	 * Drops this test's collection. Without it every run leaves one behind, and once the
+	 * catalog is full every test fails at setup with CatalogFull.
+	 */
+	@AfterEach
+	void dropCollection() {
+		if (collection == null) return;
+		try {
+			http.execute("drop collection " + collection);
+		} catch (AsdbClient.AsdbException e) {
+			// setup can fail after naming the collection but before creating it
+		}
 	}
 
 	private static TelemetrySnapshot snapshot(String placeId) {
