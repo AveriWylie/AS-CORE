@@ -59,6 +59,14 @@ public class InMemoryQueueStore implements QueueStore {
 		if (queue != null && queues.containsKey(queue)) queues.get(queue).remove(jobId);
 	}
 
+	@Override
+	public synchronized long depth(JobType type) {
+		return queues.entrySet().stream()
+				.filter(e -> e.getKey().equals(type.toString()) || e.getKey().equals(type + ":high"))
+				.mapToLong(e -> e.getValue().size())
+				.sum();
+	}
+
 	public synchronized boolean isQueued(String jobId) {return queues.values().stream().anyMatch(q -> q.contains(jobId));}
 
 	public synchronized boolean isInFlight(String nodeId, String jobId) {

@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 
 // ConfigStore without Mongo
 public class InMemoryConfigStore implements ConfigStore {
@@ -38,6 +39,16 @@ public class InMemoryConfigStore implements ConfigStore {
 
 	@Override
 	public synchronized Optional<Integer> getActivePointer(String placeId, String namespace) {return Optional.ofNullable(pointers.get(placeId + ":" + namespace));}
+
+	@Override
+	public synchronized Map<String, Map<String, Integer>> activePointers() {
+		Map<String, Map<String, Integer>> active = new TreeMap<>();
+		pointers.forEach((key, version) -> {
+			String[] parts = key.split(":", 2);
+			active.computeIfAbsent(parts[0], k -> new TreeMap<>()).put(parts[1], version);
+		});
+		return active;
+	}
 
 	public synchronized int versionCount() {return versions.size();}
 

@@ -19,6 +19,7 @@ import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 import ascore.asdb.AsdbBinaryClient;
@@ -83,8 +84,12 @@ class RealtimeBroadcastTest {
 		WebSocketStompClient client = new WebSocketStompClient(new StandardWebSocketClient());
 		client.setMessageConverter(new MappingJackson2MessageConverter());
 
+		// R1 refuses a CONNECT without a DASH key
+		StompHeaders connect = new StompHeaders();
+		connect.add("X-Api-Key", "dev-dash-key");
+
 		StompSession session = client
-				.connectAsync("ws://localhost:" + port + "/ws", new StompSessionHandlerAdapter() { })
+				.connectAsync("ws://localhost:" + port + "/ws", new WebSocketHttpHeaders(), connect, new StompSessionHandlerAdapter() { })
 				.get(5, TimeUnit.SECONDS);
 
 		BlockingQueue<Object> received = new LinkedBlockingQueue<>();
