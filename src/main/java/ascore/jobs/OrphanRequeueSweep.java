@@ -1,7 +1,15 @@
 package ascore.jobs;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import ascore.nodes.HeartbeatStore;
 import ascore.realtime.RealtimePublisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -27,8 +35,49 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class OrphanRequeueSweep {
+
+	private static final Logger log = LoggerFactory.getLogger(OrphanRequeueSweep.class);
+	private static final List<JobStatus> LIVE = List.of(JobStatus.CLAIMED, JobStatus.RUNNING);
+
+	private final HeartbeatStore heartbeats;
+	private final QueueStore queue;
+	private final JobStore jobs;
+	private final RealtimePublisher publisher;
+
+	public OrphanRequeueSweep(HeartbeatStore heartbeats, QueueStore queue, JobStore jobs, RealtimePublisher publisher) {
+		this.heartbeats = heartbeats;
+		this.queue = queue;
+		this.jobs = jobs;
+		this.publisher = publisher;
+	}
+
 	@Scheduled(fixedDelay = 30000)
 	public void sweep() {
-		// TODO(shahyar): dead-node inflight drain per blueprint J9.
+		try {
+			for (String node : holders()) {
+				if (heartbeats.isAlive(node)) continue;
+				for (Job job : jobs.findByClaimedByAndStatusIn(node, LIVE)) requeue(node, job);
+			}
+		} catch (DataAccessException e) {
+			log.warn("orphan sweep skipped, a store is unreachable: {}", e.getMessage());
+		}
 	}
+
+	// only nodes currently holding CLAIMED or RUNNING work can have orphans
+	private Set<String> holders() {
+		Set<String> nodes = new HashSet<>();
+		for (JobStatus status : LIVE) {
+			for (Job job : jobs.find(Optional.of(status), Optional.empty())) nodes.add(job.getClaimedBy());
+		}
+		return nodes;
+	}
+
+	// requeued only if this sweep took it out of flight, so a job completed mid-sweep stays DONE
+	private void requeue(String node, Job job) {
+		if (!queue.release(node, job.getId())) return;
+		job.requeue(null);
+		jobs.save(job);
+		publisher.publish("/topic/alerts", Map.of("event", "job-orphaned", "jobId", job.getId(), "nodeId", node));
+	}
+
 }

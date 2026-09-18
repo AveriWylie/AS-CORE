@@ -32,6 +32,8 @@ public class SecurityConfig {
 						.requestMatchers("/api/telemetry/**").hasRole(ApiKeyRole.ROBLOX.name())
 						.requestMatchers("/api/nodes/register", "/api/nodes/*/heartbeat").hasRole(ApiKeyRole.NODE.name())
 						.requestMatchers("/api/nodes").hasRole(ApiKeyRole.DASH.name())
+						.requestMatchers("/api/jobs/claim", "/api/jobs/*/progress", "/api/jobs/*/complete", "/api/jobs/*/fail").hasRole(ApiKeyRole.NODE.name())
+						.requestMatchers("/api/jobs").hasRole(ApiKeyRole.DASH.name())
 						.anyRequest().authenticated())
 						.addFilterBefore(new ApiKeyAuthFilter(apiKeyProperties), UsernamePasswordAuthenticationFilter.class);
 

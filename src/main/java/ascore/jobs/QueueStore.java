@@ -19,7 +19,7 @@ public interface QueueStore {
 	Optional<String> claimOne(List<JobType> types, String nodeId, Duration timeout);
 
 	/** Return an in-flight id to its queue (requeue path); must be a no-op if already gone. */
-	void release(String nodeId, String jobId);
+	boolean release(String nodeId, String jobId);
 
 	/** Drop an in-flight id (successful completion). */
 	void ack(String nodeId, String jobId);
