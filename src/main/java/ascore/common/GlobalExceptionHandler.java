@@ -74,8 +74,7 @@ public class GlobalExceptionHandler {
 			fieldErrors.putIfAbsent(error.getField(), complaint);
 		}
 
-		return ResponseEntity.badRequest()
-				.body(new ApiError(400, "validation failed", fieldErrors, Instant.now()));
+		return ResponseEntity.badRequest().body(new ApiError(400, "validation failed", fieldErrors, Instant.now()));
 	}
 
 	/**
@@ -110,8 +109,7 @@ public class GlobalExceptionHandler {
 			fieldErrors.putIfAbsent(field, violation.getMessage());
 		}
 
-		return ResponseEntity.badRequest()
-				.body(new ApiError(400, "validation failed", fieldErrors, Instant.now()));
+		return ResponseEntity.badRequest().body(new ApiError(400, "validation failed", fieldErrors, Instant.now()));
 	}
 
 	/**

@@ -13,10 +13,14 @@ shayveri.opencloud.api-key, which is Roblox's key, sent OUTBOUND when egress pus
 
 THE TWO LAYERS
 
-1. Authentication - ApiKeyAuthFilter. "Who is this?" Secret in, role out. If no secret matches, nothing is set and the
+Where they live: the key model and the filter are in common, the rules are in config/SecurityConfig, and
+common imports neither config nor any module. The dependency only ever points inwards, which is what lets
+the HTTP side and the STOMP side share one answer to "which secret means which role".
+
+1. Authentication - common/ApiKeyAuthFilter. "Who is this?" Secret in, role out. If no secret matches, nothing is set and the
 caller stays anonymous. Note it does not reject, it just doesn't authenticate you.
 
-2. Authorisation - SecurityConfig. "May this role do this?" Role plus path in, allow or deny out. This is where the
+2. Authorisation - config/SecurityConfig. "May this role do this?" Role plus path in, allow or deny out. This is where the
 rejection actually happens: .requestMatchers("/api/telemetry/**").hasRole("ROBLOX").
 
 That split is why an unknown key gives 403 rather than 401, the filter shrugs, and the rule later says an
@@ -58,6 +62,53 @@ Which is also the order the pieces come alive in:
 Step 3 is why a typo in the YAML stops the application rather than quietly authorising an unknown role at
 3am: the check happens once, at deployment, where somebody is watching.
 
+THE SAME LOOKUP, WITHOUT THE FILTER
+
+ApiKeyResolver is that scan on its own: secret in, Optional<ApiKeyRole> out, and nothing else. No header
+read, no SecurityContext, no filter chain. It reads the same ApiKeyProperties, so it can never disagree with
+the filter about which secret means which role.
+
+It exists for callers that have a key but no servlet request. Today that is one: StompAuthInterceptor, on
+the STOMP side below. The plan and the Module 7 blueprint also name it as the seam for where "who" comes
+from in the audit trail, once keys go per person rather than per role, so "dash" becomes "averi".
+
+The filter does not call it. Both read the same properties and so agree, but the scan is written twice, and
+pointing the filter at the resolver is a safe change whenever the filter is next touched.
+
+
+WHAT THE FILTER HANDS TO THE RULES
+
+The filter stores an authority named "ROLE_" + role.name(), and SecurityConfig writes
+hasRole(ApiKeyRole.NODE.name()), which adds that prefix back for you. That prefix is the contract between
+the two: store it without, or ask with hasAuthority instead, and every rule silently denies. The principal
+itself is the ApiKeyRole, which is what Authentication.getName() returns when a controller needs to record
+WHO did something, as ConfigController and JobController do for the audit trail.
+
+THE RULES ARE PATHS, NOT METHODS
+
+SecurityConfig's rules are written as URL patterns because that is the only vocabulary available where it
+runs. The filter chain sits BEFORE the dispatcher decides which controller handles a request, so there is no
+controller and no method to name yet, only a method, a path and headers.
+
+    /api/jobs                   exactly that path, nothing under it
+    /api/telemetry/**           that path and anything beneath it, at any depth
+    /api/nodes/*/heartbeat      one segment in the middle, so any node id
+    /api/config/**              everything under /api/config, including itself
+
+So * is one path segment and ** is any number of them. This is why /api/config/active has to be listed ABOVE
+/api/config/**: the rules are matched in order, first match wins, and the broader pattern would otherwise
+swallow the poll path and hand it to DASH.
+
+The same patterns turn up all over Spring, not only in security: WebSocketConfig's addEndpoint("/ws"), CORS
+mappings, static resource handlers. Controller mappings are the exception worth knowing:
+@PostMapping("/api/nodes/{id}/heartbeat") uses {id} because it BINDS that segment to a parameter, where
+SecurityConfig only has to match it.
+
+THE COST OF MATCHING BY PATH. The patterns here and the mappings in controllers can drift apart. Rename a
+mapping and the rule silently stops matching, so the request falls through to anyRequest().authenticated()
+and becomes reachable by any valid key rather than the intended role. Nothing catches that at compile time,
+which is why every module has a security test asserting the wrong role gets a 403.
+
 
 THE STOMP HALF
 
@@ -70,6 +121,19 @@ dashboard socket has its own equivalent of the filter:
 
 Same key, same roles, same reverse lookup, enforced at the one point a session is established rather than
 per frame. A rejected CONNECT gets an ERROR frame and the socket closes.
+
+Why a second class rather than the filter: the filter is servlet-shaped. It reads the header itself and
+leaves an Authentication in the SecurityContext, because that is where SecurityConfig's rules look. A frame
+has no servlet request to hang an identity on, so the resolver stops at an Optional and the interceptor
+attaches the principal to the SESSION, which outlives any one frame.
+
+
+WHAT A FAILURE REVEALS
+
+ApiError is the one JSON shape every failure returns and GlobalExceptionHandler is what produces it, which
+is a security decision as much as a consistency one: an unexpected error becomes a 500 with the internals
+stripped, because a stack trace handed to a caller names your classes, line numbers and dependency versions.
+No module formats its own errors, so there is one place that rule is enforced.
 
 
 ENCAPSULATION, THE OTHER HALF OF IT

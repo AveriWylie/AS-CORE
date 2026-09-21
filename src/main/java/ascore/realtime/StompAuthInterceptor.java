@@ -16,9 +16,12 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
 /** R1 - closes the Phase-1 open-handshake hole: reject CONNECT frames without a DASH key.
- *Consumes: ChannelInterceptor (override preSend); StompHeaderAccessor.wrap(msg) -> getCommand()==CONNECT,
- *  getFirstNativeHeader("X-Api-Key"); ApiKeyResolver seam (not raw map). Register via B3 configureClientInboundChannel.
- * NOTE: HTTP SecurityConfig does NOT cover STOMP frames - this is their equivalent of ApiKeyAuthFilter.
+ * Consumes: ChannelInterceptor (override preSend); StompHeaderAccessor.wrap(msg) -> getCommand()==CONNECT,
+ * getFirstNativeHeader("X-Api-Key"); ApiKeyResolver seam (not raw map). Register via B3 configureClientInboundChannel.
+ * NOTE: HTTP SecurityConfig does NOT cover STOMP frames, this is their equivalent of ApiKeyAuthFilter.
+ *
+ * It sits on the client inbound channel: every message a client sends into the server passes through
+ * its preSend before the broker sees it.
  */
 @Component
 public class StompAuthInterceptor implements ChannelInterceptor {

@@ -87,6 +87,7 @@ public final class AsdbDocumentStore<T> {
 		String assignments = doc.entrySet().stream()
 				.map(e -> AsdbEntityMapper.backtick(e.getKey()) + " = " + AsdbEntityMapper.literal(e.getValue()))
 				.collect(Collectors.joining(", "));
+
 		return client.execute("from " + collection + " where " + eq(id.getName(), key) + " update set " + assignments).affected();
 	}
 

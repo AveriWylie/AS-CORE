@@ -1,6 +1,7 @@
 The asdb folder is the translator between Spring and your Rust database. Four classes, each one does exactly
 one job, and they stack:
 
+```text
 TelemetryService  →  TelemetryStore (interface)
                           ↓
              ┌── AsdbTelemetryStore ────────── the plug
@@ -10,12 +11,14 @@ TelemetryService  →  TelemetryStore (interface)
              └── Client ───────────────────  ASL text → HTTP → asdb
 
                  AsdbHealthIndicator ────────── reports reachability strictly
+```
 
-ONE WRITE, END TO END
+## One write, end to end
 
 Who calls whom when a job is saved. The document store is the one driving; the mapper and the client are
 helpers it calls, and neither knows the other exists.
 
+```text
 AsdbJobStore.save(job)                      the adapter, module-side
   └─ AsdbDocumentStore.insert(job)          generic store
        ├─ document(job)
@@ -24,16 +27,21 @@ AsdbJobStore.save(job)                      the adapter, module-side
        └─ client.insert(collection, doc)    AsdbBinaryClient
             └─ AbpCodec.insertPayload       tag and length-prefix each value
                  └─ frame on TCP 7071
+```
 
 Reading is the same chain in reverse, with one step telemetry never needed: client.query returns maps, and
 AsdbDocumentStore.entity turns each back into the entity, millis to Instant and names to enums. That is why
 AsdbEntityMapper has toMap and no fromMap.
 
+## The classes
+
 AsdbTelemetryStore (163) is the plug. The only class that implements TelemetryStore, so it's the only one
 Spring can inject. Two real methods:
 
+```text
 saveSnapshot(TelemetrySnapshot)  → mapper → client
 saveEvents(List<GameEvent>)      → mapper → client   (empty list = no-op)
+```
 
 Its constructor also runs ensureSchema() once at startup, creating collections and @Indexed indexes, because
 Mongo does both implicitly and asdb does neither. That method checks health first, so an unreachable server logs
@@ -42,10 +50,12 @@ a loud ERROR instead of six benign-looking "skipped" lines.
 AsdbEntityMapper (346), this is the the heart, and the largest for a reason. Converts a Java object into ASL text
 by reflection:
 
+```text
 collectionOf(Class)      reads @Document      → "telemtry_snapshots"
 indexedFieldsOf(Class)   reads @Indexed       → ["placeId"]
 insertStatement(entity)  → from telemtry_snapshots | insert { ... }
 insertStatement(List)    → from game_events | insert [ {...}, {...} ]
+```
 
 It's final with a private constructor, pure functions, no state, so its tests need no server and no Spring.
 
@@ -68,12 +78,15 @@ tests, and why fixing the batch-insert bracket bug touched one method.
 Note all four carry @ConditionalOnProperty(havingValue = "asdb"), including the health indicator, so a health check for
 a switched-off backend doesn't linger.
 
-THE BINARY PATH (added after the above, and the folder is now six classes)
+## The binary path
+
+*Added after the above, and the folder is now six classes.*
 
 asdb speaks two protocols from one process against one database: ASL text over
 HTTP on 7070, and ABP/1, a binary protocol, on 7071. This folder can use either.
 shayveri.store.asdb.protocol picks one and defaults to binary.
 
+```text
 TelemetryService  →  TelemetryStore (interface)
                           ↓
              ┌── AsdbTelemetryStore ────────── the plug, unchanged above this line
@@ -85,6 +98,7 @@ TelemetryService  →  TelemetryStore (interface)
              │   Java object → ASL text        Java object → field map
              └── AsdbClient                    AbpCodec + AsdbBinaryClient
                  ASL text → HTTP               field map → binary frames
+```
 
 AbpCodec (356) is the encoder. It is a MIRROR of src/wire.rs in asdb, and the
 two are held together by a byte-exact fixture asserted on both sides, since
@@ -99,11 +113,13 @@ threads and synchronized would pin their carriers.
 AsdbEntityMapper gained toMap(Object), which is documentLiteral with the text
 rendering removed, so both paths walk the same fields.
 
-WHY. Measured from Java against the same server, per document:
+**WHY.** Measured from Java against the same server, per document:
 
+```text
     HTTP + ASL text            236.78 us
     ABP binary, single          28.57 us     8.29x
     ABP binary, batch of 100     3.27 us    72.45x
+```
 
 saveEvents sends batches, so it takes the last row. Values also stop being
 syntax on the binary path: they travel as length-prefixed bytes and are never
@@ -113,29 +129,31 @@ nothing to get wrong.
 The full derivation, including what was measured and rejected, is in
 PROTOCOL.txt in the asdb repo.
 
-WHERE ASDB DOES NOT MATCH MONGO
+## Where asdb does not match Mongo
 
-TTL is configured on the server, not by the annotation. @Indexed(expireAfter = "7d") on
+**TTL is configured on the server, not by the annotation.** @Indexed(expireAfter = "7d") on
 TelemetrySnapshot.receivedAt is read by Spring Data and would be read by Mongo. asdb has no TTL index; its
 server runs a sweeper configured with a command-line flag:
 
+```text
     asdb telemetry.db --ttl telemtry_snapshots.receivedAt=7d
+```
 
 So the annotation stays true as documentation but stops being the thing that enforces it. If the flag is
 missing, the collection grows forever and nothing fails. That is the sharpest edge in this whole adapter.
 
-No generated ids. Mongo fills a null @Id with an ObjectId. asdb does not, and the mapper omits the field
+**No generated ids.** Mongo fills a null @Id with an ObjectId. asdb does not, and the mapper omits the field
 instead. Nothing in the ingress path reads ids back, so this is currently invisible, but a read path would
 have to deal with it.
 
-Writes are not transactional. saveEvents sends one batched statement, so it is one request, but asdb has no
+**Writes are not transactional.** saveEvents sends one batched statement, so it is one request, but asdb has no
 transactions: a failure partway through leaves the earlier documents written. Mongo's saveAll is not atomic
 across documents either, so this is a match in practice rather than a regression.
 
-One writer at a time. The asdb server serializes every statement behind a mutex, so concurrent telemetry
+**One writer at a time.** The asdb server serializes every statement behind a mutex, so concurrent telemetry
 posts queue rather than run in parallel.
 
-THE DOCUMENT STORE
+## The document store
 
 Telemetry only ever inserts. Nodes, jobs, config and audit also read back, filter, sort and overwrite, so
 they share one generic piece in the asdb folder instead of each growing its own mapping.
@@ -152,11 +170,13 @@ Spring Data does, then filled field by field.
 
 The four adapters sit in their own modules and are thin:
 
+```text
     AsdbNodeStore    nodes            upsert on nodeId, find by id, find all
     AsdbJobStore     jobs             insert when new, overwrite by id, filter by status, mapId, claimedBy
     AsdbConfigStore  config_versions  insert, find by place + namespace + version, latest by order + limit
                      config_active    upsert on "placeId:namespace", list all
     AsdbAuditStore   audit            insert, range on at, optional action, newest first
+```
 
 They share one AsdbBinaryClient bean from config/AsdbConfig, built from the same shayveri.store.asdb
 properties. AsdbTelemetryStore keeps its own client and its HTTP option.
@@ -169,25 +189,25 @@ Each store has a contract test (NodeStoreContract, JobStoreContract, ConfigStore
 AuditStoreContract) run once against asdb and once against Mongo. The asdb runs use port 7071 unless
 ASDB_TEST_ABP_PORT says otherwise, so they can point at a scratch server.
 
-WHAT THE ADAPTERS WORK AROUND, WHICH IS ASDB'S BACKLOG
+## What the adapters work around, which is asdb's backlog
 
 Each of these is handled on the Java side today and would be better as a feature in asdb.
 
-No upsert. Saving a node or moving a config pointer is an update, then an insert if nothing matched. The
+**No upsert.** Saving a node or moving a config pointer is an update, then an insert if nothing matched. The
 method is synchronized, so one AS-CORE process cannot insert the same id twice, but two processes could.
 A native upsert would make it one statement.
 
-unique is parsed, not enforced. Mongo's unique index on (placeId, namespace, version) is what stops two
+**unique is parsed, not enforced.** Mongo's unique index on (placeId, namespace, version) is what stops two
 config saves landing on the same version. AsdbConfigStore checks and inserts under a lock instead, which
 again only holds within one process.
 
-No generated ids. Telemetry leaves a null id out. These stores read ids back, so a null String id is filled
+**No generated ids.** Telemetry leaves a null id out. These stores read ids back, so a null String id is filled
 with a UUID before insert.
 
-No binary update. Inserts travel as bytes, but an overwrite is ASL text, so every value in it passes
+**No binary update.** Inserts travel as bytes, but an overwrite is ASL text, so every value in it passes
 through the escaper. An OP_UPDATE would remove that.
 
-WHY REDIS STAYS
+## Why Redis stays
 
 Redis is not only storage here. Node liveness is a key that expires 45 seconds after the last heartbeat,
 and a job claim is one atomic move from a queue list to a node's in-flight list. asdb's TTL is a sweeper

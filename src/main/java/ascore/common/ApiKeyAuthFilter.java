@@ -40,9 +40,8 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
 					 */
 					ApiKeyRole role = ApiKeyRole.valueOf(entry.getKey().toUpperCase());
 
-					var authentication = new UsernamePasswordAuthenticationToken(role,
-							null, java.util.List.of( new SimpleGrantedAuthority("ROLE_" + role.name()))
-					);
+					var authentication = new UsernamePasswordAuthenticationToken(role, null,
+							java.util.List.of( new SimpleGrantedAuthority("ROLE_" + role.name())));
 
 					SecurityContextHolder.getContext().setAuthentication(authentication);
 					break;

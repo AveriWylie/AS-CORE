@@ -23,6 +23,4 @@ THE MIDDLE CASE
 
 THE ONE WITH A POLICY IN IT
 
-    SecurityConfig      the filter chain, and the whole role table: which key may reach which path, in
-                        order, first match wins. Adding an endpoint means adding a line here, which is why
-                        no controller checks identity. See security.md.
+    SecurityConfig      the filter chain and the role table. See security.md.

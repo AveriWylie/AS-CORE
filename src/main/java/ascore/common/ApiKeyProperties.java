@@ -53,11 +53,13 @@ public class ApiKeyProperties {
 	 */
 	private Map<String, String> apiKeys = Map.of();
 
-	public Map<String, String> getApiKeys() {return apiKeys;}
-
 	public void setApiKeys(Map<String, String> apiKeys) {
 		// see application.yml
 		this.apiKeys = apiKeys;
+	}
+
+	public Map<String, String> getApiKeys() {
+		return apiKeys;
 	}
 
 	/**
@@ -104,7 +106,8 @@ public class ApiKeyProperties {
 		if (!problems.isEmpty()) {
 			throw new IllegalStateException(
 					"shayveri.security.api-keys is invalid: " + String.join("; ", problems)
-							+ ". Valid roles are " + validRoleNames() + " (case-insensitive).");
+							+ ". Valid roles are " + validRoleNames() + " (case-insensitive)."
+			);
 		}
 	}
 
