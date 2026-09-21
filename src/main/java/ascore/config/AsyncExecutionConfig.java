@@ -22,7 +22,7 @@ import java.util.concurrent.Executors;
  *       (A7's fire-and-forget persistence) the same treatment.
  */
 @Configuration
-public class AsyncConfig {
+public class AsyncExecutionConfig {
 
 	@Bean
 	public Executor telemetryExecutor() {return Executors.newVirtualThreadPerTaskExecutor();}

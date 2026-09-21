@@ -54,16 +54,20 @@ public final class AsdbDocumentStore<T> {
 	 * case after the first start, so failures are logged, not thrown.
 	 */
 	public void ensureSchema(String... extraIndexes) {
+
 		if (!client.isHealthy()) {
 			log.error("asdb is UNREACHABLE; {} reads and writes will fail until it is running", collection);
 			return;
 		}
-		attempt("create " + collection + " {}");
 
+		attempt("create " + collection + " {}");
 		List<String> indexed = new ArrayList<>(AsdbEntityMapper.indexedFieldsOf(type));
 		indexed.add(id.getName());
 		indexed.addAll(List.of(extraIndexes));
-		for (String field : indexed.stream().distinct().toList()) attempt("create index on " + collection + "." + field);
+
+		for (String field : indexed.stream().distinct().toList()) {
+			attempt("create index on " + collection + "." + field);
+		}
 	}
 
 	/**
@@ -107,15 +111,22 @@ public final class AsdbDocumentStore<T> {
 		return client.query(statement).stream().map(this::entity).toList();
 	}
 
-	public static String eq(String field, Object value) {return AsdbEntityMapper.backtick(field) + " == " + AsdbEntityMapper.literal(plain(value));}
-
-	public static String in(String field, Collection<?> values) {
-		return AsdbEntityMapper.backtick(field) + " in " + AsdbEntityMapper.literal(values.stream().map(AsdbDocumentStore::plain).toList());
+	public static String eq(String field, Object value) {
+		return AsdbEntityMapper.backtick(field) + " == " + AsdbEntityMapper.literal(plain(value));
 	}
 
-	public static String atLeast(String field, Object value) {return AsdbEntityMapper.backtick(field) + " >= " + AsdbEntityMapper.literal(plain(value));}
+	public static String in(String field, Collection<?> values) {
+		return AsdbEntityMapper.backtick(field) + " in " +
+				AsdbEntityMapper.literal(values.stream().map(AsdbDocumentStore::plain).toList());
+	}
 
-	public static String atMost(String field, Object value) {return AsdbEntityMapper.backtick(field) + " <= " + AsdbEntityMapper.literal(plain(value));}
+	public static String atLeast(String field, Object value) {
+		return AsdbEntityMapper.backtick(field) + " >= " + AsdbEntityMapper.literal(plain(value));
+	}
+
+	public static String atMost(String field, Object value) {
+		return AsdbEntityMapper.backtick(field) + " <= " + AsdbEntityMapper.literal(plain(value));
+	}
 
 	private void attempt(String statement) {
 		try {
@@ -133,14 +144,20 @@ public final class AsdbDocumentStore<T> {
 	}
 
 	private static Object plain(Object value) {
-		if (value instanceof Enum<?> e) return e.name();
-		if (value instanceof Map<?, ?> map) {
-			Map<String, Object> out = new LinkedHashMap<>();
-			map.forEach((k, v) -> out.put(String.valueOf(k), plain(v)));
-			return out;
-		}
-		if (value instanceof Collection<?> items) return items.stream().map(AsdbDocumentStore::plain).toList();
-		return value;
+		return switch (value) {
+			// no braces no yield necessary
+			case Enum<?> e -> e.name();
+
+			case Map<?, ?> map -> {
+				Map<String, Object> out = new LinkedHashMap<>();
+				map.forEach((k, v) -> out.put(String.valueOf(k), plain(v)));
+				yield out;
+			}
+
+			case Collection<?> items -> items.stream().map(AsdbDocumentStore::plain).toList();
+
+			case null, default -> value;
+		};
 	}
 
 	private T entity(Map<String, Object> doc) {

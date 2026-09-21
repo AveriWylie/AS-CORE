@@ -11,6 +11,24 @@ TelemetryService  →  TelemetryStore (interface)
 
                  AsdbHealthIndicator ────────── reports reachability strictly
 
+ONE WRITE, END TO END
+
+Who calls whom when a job is saved. The document store is the one driving; the mapper and the client are
+helpers it calls, and neither knows the other exists.
+
+AsdbJobStore.save(job)                      the adapter, module-side
+  └─ AsdbDocumentStore.insert(job)          generic store
+       ├─ document(job)
+       │    ├─ AsdbEntityMapper.toMap(job)  reflection: fields into a LinkedHashMap
+       │    └─ plain(...)                   enums to names, recursively through maps and lists
+       └─ client.insert(collection, doc)    AsdbBinaryClient
+            └─ AbpCodec.insertPayload       tag and length-prefix each value
+                 └─ frame on TCP 7071
+
+Reading is the same chain in reverse, with one step telemetry never needed: client.query returns maps, and
+AsdbDocumentStore.entity turns each back into the entity, millis to Instant and names to enums. That is why
+AsdbEntityMapper has toMap and no fromMap.
+
 AsdbTelemetryStore (163) is the plug. The only class that implements TelemetryStore, so it's the only one
 Spring can inject. Two real methods:
 

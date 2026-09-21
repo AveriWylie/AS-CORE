@@ -113,10 +113,7 @@ public final class AsdbEntityMapper {
 	 * receives a whole batch.
 	 */
 	public static String insertStatement(List<?> entities) {
-
-		if (entities.isEmpty()) {
-			throw new IllegalArgumentException("no entities to insert");
-		}
+		if (entities.isEmpty()) throw new IllegalArgumentException("no entities to insert");
 
 		return insertStatement(collectionOf(entities.get(0).getClass()), entities);
 	}
@@ -134,10 +131,7 @@ public final class AsdbEntityMapper {
 	 * caller. A parity test found it, which is the argument for having one.
 	 */
 	public static String insertStatement(String collection, List<?> entities) {
-
-		if (entities.isEmpty()) {
-			throw new IllegalArgumentException("no entities to insert");
-		}
+		if (entities.isEmpty()) throw new IllegalArgumentException("no entities to insert");
 
 		// Batch insert is BRACKETED: insert [ {...}, {...} ]. The unbracketed
 		// comma form parses as a single document followed by trailing tokens,
@@ -146,9 +140,7 @@ public final class AsdbEntityMapper {
 		StringBuilder out = new StringBuilder("from ").append(collection).append(" | insert [");
 
 		for (int i = 0; i < entities.size(); i++) {
-			if (i > 0) {
-				out.append(", ");
-			}
+			if (i > 0) out.append(", ");
 			out.append(documentLiteral(entities.get(i)));
 		}
 
@@ -196,7 +188,6 @@ public final class AsdbEntityMapper {
 
 			map.put(field.getName(), value);
 		}
-
 		return map;
 	}
 
@@ -232,9 +223,7 @@ public final class AsdbEntityMapper {
 
 			first = false;
 			out.append(field.getName()).append(": ").append(literal(value));
-
 		}
-
 		return out.append(" }").toString();
 	}
 
@@ -245,24 +234,26 @@ public final class AsdbEntityMapper {
 	 * this class: every caller should be going through {@code insertStatement}.
 	 */
 	static String literal(Object value) {
+		// switch statement makes this function much less verbose, see java stuff
+        switch (value) {
+            case null -> {
+                return "null";
+            }
+            case String s -> {
+                return quote(s);
+            }
+            case Instant instant -> {
+                return Long.toString(instant.toEpochMilli()); // see the class note
+            }
+            case Boolean b -> {
+                return b ? "true" : "false";
+            }
+            default -> {
+				// empty means no such case was found we want handled insode the  switch statement, execute rest
+			}
+        }
 
-		if (value == null) {
-			return "null";
-		}
-
-		if (value instanceof String s) {
-			return quote(s);
-		}
-
-		if (value instanceof Instant instant) {
-			return Long.toString(instant.toEpochMilli()); // see the class note
-		}
-
-		if (value instanceof Boolean b) {
-			return b ? "true" : "false";
-		}
-
-		if (value instanceof Integer || value instanceof Long || value instanceof Short || value instanceof Byte) {
+        if (value instanceof Integer || value instanceof Long || value instanceof Short || value instanceof Byte) {
 			return value.toString();
 		}
 
@@ -271,9 +262,7 @@ public final class AsdbEntityMapper {
 			// asdb's JSON writer maps non-finite floats to null, and ASL has no
 			// literal for them either. Normalising here means the value that
 			// lands is the one this side chose, not a surprise downstream.
-			if (Double.isNaN(d) || Double.isInfinite(d)) {
-				return "null";
-			}
+			if (Double.isNaN(d) || Double.isInfinite(d)) return "null";
 			return value.toString();
 		}
 
@@ -281,17 +270,13 @@ public final class AsdbEntityMapper {
 			StringBuilder out = new StringBuilder("{ ");
 			boolean first = true;
 			for (Map.Entry<?, ?> entry : map.entrySet()) {
-				if (!first) {
-					out.append(", ");
-				}
+				if (!first) out.append(", ");
 				first = false;
 				// Map keys arrive as arbitrary strings (customMetrics is a
 				// Map<String, Object> filled from user JSON), so a key can
 				// collide with an ASL keyword or contain punctuation. Backtick
 				// quoting is what makes that safe.
-				out.append(backtick(String.valueOf(entry.getKey())))
-						.append(": ")
-						.append(literal(entry.getValue()));
+				out.append(backtick(String.valueOf(entry.getKey()))).append(": ").append(literal(entry.getValue()));
 			}
 			return out.append(" }").toString();
 		}
@@ -300,9 +285,7 @@ public final class AsdbEntityMapper {
 			StringBuilder out = new StringBuilder("[");
 			boolean first = true;
 			for (Object item : collection) {
-				if (!first) {
-					out.append(", ");
-				}
+				if (!first) out.append(", ");
 				first = false;
 				out.append(literal(item));
 			}
@@ -313,9 +296,7 @@ public final class AsdbEntityMapper {
 			int length = java.lang.reflect.Array.getLength(value);
 			StringBuilder out = new StringBuilder("[");
 			for (int i = 0; i < length; i++) {
-				if (i > 0) {
-					out.append(", ");
-				}
+				if (i > 0) out.append(", ");
 				out.append(literal(java.lang.reflect.Array.get(value, i)));
 			}
 			return out.append("]").toString();
@@ -354,8 +335,7 @@ public final class AsdbEntityMapper {
 				case '\t' -> out.append("\\t");
 				case '\r' -> out.append("\\r");
 				// below 0x20 and not one of the above: dropped, see above
-				default -> {if (c >= 0x20) {out.append(c);}
-				}
+				default -> {if (c >= 0x20) out.append(c);}
 			}
 		}
 
@@ -382,9 +362,7 @@ public final class AsdbEntityMapper {
 		// A reserved word is syntactically a plain identifier and still has to
 		// be quoted: asdb's lexer maps "order" to a stage-keyword token before
 		// the parser ever sees it, so { order: 1 } is a parse error.
-		if (plain && RESERVED.contains(name)) {
-			plain = false;
-		}
+		if (plain && RESERVED.contains(name)) plain = false;
 
 		return plain ? name : "`" + name.replace("`", "") + "`";
 	}

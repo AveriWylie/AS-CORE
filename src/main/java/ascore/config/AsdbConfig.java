@@ -25,6 +25,7 @@ public class AsdbConfig {
 			@Value("${shayveri.store.asdb.max-idle-connections:8}") int maxIdle,
 			@Value("${shayveri.store.asdb.connect-timeout-ms:2000}") long connectTimeoutMs,
 			@Value("${shayveri.store.asdb.request-timeout-ms:5000}") long requestTimeoutMs) {
+
 		return new AsdbBinaryClient(host, port, Duration.ofMillis(connectTimeoutMs), Duration.ofMillis(requestTimeoutMs), maxIdle);
 	}
 

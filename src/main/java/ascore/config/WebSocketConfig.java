@@ -47,6 +47,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
 	// R1: every frame a client sends passes the interceptor before the broker sees it
 	@Override
-	public void configureClientInboundChannel(ChannelRegistration registration) {registration.interceptors(auth);}
+	public void configureClientInboundChannel(ChannelRegistration registration) {
+		registration.interceptors(auth);
+	}
 
 }

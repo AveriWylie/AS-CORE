@@ -42,7 +42,10 @@ public class ApiKeyProperties {
 	 * "roblox" → "dev-roblox-key"
 	 *	"node"   → "dev-node-key"
 	 *	"dash"   → "dev-dash-key"
-	 *	But the filter searches it backwards. It doesn't look anything up by what was sent — it scans every entry comparing the value against the header, and when one matches it takes that entry's key as the answer:
+	 *
+	 * But the filter searches it backwards. It doesn't look anything up by what was sent,
+	 * it scans every entry comparing the value against the header, and when one matches it
+	 * takes that entry's key as the answer:
 	 *
 	 *	for (Map.Entry<String, String> entry : apiKeyProperties.getApiKeys().entrySet()) {
 	 *		if (entry.getValue().equals(providedKey)) {        // match on the SECRET
@@ -50,9 +53,7 @@ public class ApiKeyProperties {
 	 */
 	private Map<String, String> apiKeys = Map.of();
 
-	public Map<String, String> getApiKeys() {
-		return apiKeys;
-	}
+	public Map<String, String> getApiKeys() {return apiKeys;}
 
 	public void setApiKeys(Map<String, String> apiKeys) {
 		// see application.yml
@@ -80,7 +81,6 @@ public class ApiKeyProperties {
 	 */
 	@PostConstruct
 	void validate() {
-
 		List<String> problems = new ArrayList<>();
 		Set<String> seenSecrets = new HashSet<>();
 

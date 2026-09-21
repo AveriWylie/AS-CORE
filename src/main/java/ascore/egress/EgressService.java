@@ -15,7 +15,6 @@ public class EgressService {
 
 	private static final Logger log = LoggerFactory.getLogger(EgressService.class);
 	private static final int ATTEMPTS = 3;
-
 	private final OpenCloudClient client;
 	private final RealtimePublisher publisher;
 	private final OpenCloudProperties props;
@@ -24,10 +23,11 @@ public class EgressService {
 
 	@Autowired
 	public EgressService(OpenCloudClient client, RealtimePublisher publisher, OpenCloudProperties props, AsCoreMetrics metrics) {
-		this(client, publisher, props, new TokenBucket(props.getBucketCapacity(), props.getRefillPerSecond(), System::nanoTime), metrics);
+		this(client, publisher, props,
+				new TokenBucket(props.getBucketCapacity(), props.getRefillPerSecond(), System::nanoTime), metrics);
 	}
 
-	// tests hand in a bucket on a fake clock
+	// tests hand in a bucket on a fake clock, package private
 	EgressService(OpenCloudClient client, RealtimePublisher publisher, OpenCloudProperties props, TokenBucket bucket, AsCoreMetrics metrics) {
 		this.client = client;
 		this.publisher = publisher;
@@ -56,6 +56,7 @@ public class EgressService {
 				reason = "rate limited locally";
 				continue;
 			}
+
 			try {
 				client.publish(placeId, version);
 				metrics.openCloudOutcome(true);

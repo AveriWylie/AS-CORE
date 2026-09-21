@@ -41,7 +41,7 @@ public record ApiError(
 		fieldErrors = fieldErrors == null ? Map.of() : Map.copyOf(fieldErrors);
 	}
 
-	/** The common case: a failure with no per-field detail. */
+	// The common case: a failure with no per-field detail.
 	public static ApiError of(int status, String message) {
 		return new ApiError(status, message, Map.of(), Instant.now());
 	}

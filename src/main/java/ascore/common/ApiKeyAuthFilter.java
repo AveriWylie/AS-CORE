@@ -14,7 +14,6 @@ import java.util.Map;
 public class ApiKeyAuthFilter extends OncePerRequestFilter {
 
 	public static final String HEADER = "X-Api-Key";
-
 	private final ApiKeyProperties apk;
 
 	public ApiKeyAuthFilter(ApiKeyProperties apk) {this.apk = apk;}
@@ -40,8 +39,11 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
 					 * where a human is watching instead.
 					 */
 					ApiKeyRole role = ApiKeyRole.valueOf(entry.getKey().toUpperCase());
+
 					var authentication = new UsernamePasswordAuthenticationToken(role,
-							null, java.util.List.of(new SimpleGrantedAuthority("ROLE_" + role.name())));
+							null, java.util.List.of( new SimpleGrantedAuthority("ROLE_" + role.name()))
+					);
+
 					SecurityContextHolder.getContext().setAuthentication(authentication);
 					break;
 				}
