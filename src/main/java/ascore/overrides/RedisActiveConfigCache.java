@@ -16,7 +16,6 @@ import org.springframework.stereotype.Component;
 public class RedisActiveConfigCache implements ActiveConfigCache {
 
 	private static final String KEY = "config:active:";
-
 	private final StringRedisTemplate redis;
 	private final ObjectMapper json;
 
@@ -37,7 +36,9 @@ public class RedisActiveConfigCache implements ActiveConfigCache {
 	@Override
 	public Optional<ActiveConfig> get(String placeId) {
 		String cached = redis.opsForValue().get(KEY + placeId);
+
 		if (cached == null) return Optional.empty();
+
 		try {
 			return Optional.of(json.readValue(cached, ActiveConfig.class));
 		} catch (JsonProcessingException e) {
@@ -49,7 +50,7 @@ public class RedisActiveConfigCache implements ActiveConfigCache {
 	@Override
 	public void evictAll() {
 		Set<String> keys = redis.keys(KEY + "*");
-		if (keys != null && !keys.isEmpty()) redis.delete(keys);
+		if (!keys.isEmpty()) redis.delete(keys);
 	}
 
 }

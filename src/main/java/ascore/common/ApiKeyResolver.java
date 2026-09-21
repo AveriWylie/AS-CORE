@@ -20,9 +20,11 @@ public class ApiKeyResolver {
 
 	public Optional<ApiKeyRole> resolve(String providedKey) {
 		if (providedKey == null) return Optional.empty();
+
 		for (Map.Entry<String, String> entry : apk.getApiKeys().entrySet()) {
 			if (entry.getValue().equals(providedKey)) return Optional.of(ApiKeyRole.valueOf(entry.getKey().toUpperCase()));
 		}
+
 		return Optional.empty();
 	}
 
