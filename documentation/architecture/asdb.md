@@ -78,6 +78,81 @@ tests, and why fixing the batch-insert bracket bug touched one method.
 Note all four carry @ConditionalOnProperty(havingValue = "asdb"), including the health indicator, so a health check for
 a switched-off backend doesn't linger.
 
+## What the adapter emits, against the Mongo equivalent
+
+```text
+  save one document
+    Mongo   db.telemetry_snapshots.insertOne({ placeId: "8271", ... })
+    ASL     from telemtry_snapshots | insert { placeId: "8271", ... }
+
+  save a batch
+    Mongo   db.game_events.insertMany([ {...}, {...} ])
+    ASL     from game_events | insert {...}, {...}
+
+  filter and project
+    Mongo   db.jobs.find({ status: "QUEUED" }, { id: 1, mapId: 1 })
+    ASL     from jobs where status == "QUEUED" select id, mapId
+
+  membership
+    Mongo   db.jobs.find({ status: { $in: ["CLAIMED", "RUNNING"] } })
+    ASL     from jobs where status in ["CLAIMED", "RUNNING"]
+
+  count by group
+    Mongo   db.jobs.aggregate([
+              { $group: { _id: "$status", count: { $sum: 1 } } } ])
+    ASL     from jobs group status select status, count
+
+The structural difference worth internalizing: Mongo queries are DATA
+(JSON describing a query - serializes trivially, composes awkwardly, needs
+a different API shape per operation). ASL queries are LANGUAGE (text parsed
+into one uniform pipeline - reads better, needs a parser on both ends).
+That is why D3 emits strings and D4 sends text.
+
+It is also why section E exists. Text assembled from untrusted values is an
+injection surface in a way a BSON document is not. That cost belongs in the
+comparison alongside the readability benefit.
+```
+
+The structural difference worth internalizing: Mongo queries are DATA
+(JSON describing a query - serializes trivially, composes awkwardly, needs
+a different API shape per operation). ASL queries are LANGUAGE (text parsed
+into one uniform pipeline - reads better, needs a parser on both ends).
+That is why the mapper emits strings and the client sends text.
+
+It is also why the next section exists. Text assembled from untrusted values is
+an injection surface in a way a BSON document is not. That cost belongs in the
+comparison alongside the readability benefit.
+
+## Injection, the risk that comes with emitting a language
+
+Telemetry values arrive from Roblox game servers, which is to say from
+outside the trust boundary. Because the adapter builds ASL by concatenating
+those values into text, a hostile value can close the string it sits in and
+begin new syntax. Exactly the SQL injection shape:
+
+    placeId = x" } | delete //
+
+    from telemtry_snapshots | insert { placeId: "x" } | delete //", ... }
+                                                  ^^^^^^^^^^^^^^
+                                                  no longer data
+
+The fix is the standard one: escape at the single point where untrusted
+text becomes syntax, and nowhere else. AsdbEntityMapper.quote is that
+point, which is why it is package-private and why every caller goes through
+insertStatement rather than assembling strings itself.
+
+Escapes quote, backslash, newline, tab and carriage return, matching what
+asdb's lexer recognises. Any other control character is DROPPED, because
+the lexer has no escape for it and would otherwise see a raw byte inside a
+string literal.
+
+Verified against a live server: the payload above inserts as data, the
+document count stays 1, and nothing is deleted.
+
+SECOND INJECTION SURFACE, easy to miss: field NAMES, not just values.
+customMetrics is a Map<String, Object> populated from user JSON, so a key
+can be any string at all, including an ASL reserved word. See Q6.
+
 ## The binary path
 
 *Added after the above, and the folder is now six classes.*
@@ -214,3 +289,61 @@ and a job claim is one atomic move from a queue list to a node's in-flight list.
 over a timestamp field, set per collection from the command line (--ttl nodes.at=45s would parse), so a
 heartbeat would only expire when the sweeper next ran, not at 45 seconds. It also has no atomic list move.
 Replacing Redis would mean building both into asdb rather than writing another adapter.
+
+## What asdb is not ready for
+
+Stated plainly so nobody reads "BUILT" at the top as "production".
+
+  NO AUTHENTICATION and NO TLS on the asdb server. Anyone who can reach the
+  port can read and delete everything. It binds to localhost by default and
+  exposing it takes an explicit --bind, so that is at least a decision
+  rather than an inherited default.
+
+  DURABILITY IS PARTIAL, and the distinction is sharper than "no crash
+  durability", which is what this document said before it was tested.
+
+  MEASURED: SIGKILL the server mid-write, four trials at different points,
+  killing after 0.3s to 2.5s of continuous batched inserts.
+
+      acked    survived    integrity
+      21750      21750     no duplicates, no corruption
+      29300      29300     no duplicates, no corruption
+      37150      37150     no duplicates, no corruption
+      45800      45800     no duplicates, no corruption
+
+  Every acknowledged write survived a hard process kill, and the file
+  reopened cleanly each time. That is better than assumed and worth
+  knowing, because it covers the common failure: a panic, an OOM kill, a
+  container restart, a bad deploy.
+
+  WHY it holds: every statement ends in flush_all, which writes dirty pages
+  through with write(2). Killing the PROCESS does not lose data the OS is
+  already holding.
+
+  WHAT IT DOES NOT COVER: there is no fsync anywhere in the codebase,
+  confirmed by grep. So the OS page cache is the last line of defence.
+  Power loss, a kernel panic, or a yanked disk loses whatever the OS had not
+  flushed, and can tear a page mid-write with no log to recover from. Mongo
+  journals; asdb does not.
+
+  So: process-crash safe, VERIFIED. Power-loss safe, NO. For telemetry that
+  is a defensible trade, since the data is disposable by design and a
+  7-day window is already lossy. For anything that must not lose a write it
+  is a blocker, and closing it means a write-ahead log, which is a large
+  piece of work.
+
+  ONE WRITER AT A TIME. The server serializes every statement behind a
+  single mutex. Real concurrency needs page-level locking and a transaction
+  manager in the storage layer, which is now the largest remaining piece of
+  engine work after durability. Bounded by Spring's connection pool in
+  practice.
+
+  A FULL SCAN IS STILL A FULL SCAN. Streaming makes `limit` cheap, but
+  scanning 200,000 documents end to end takes ~22s, most of it serialising
+  the response rather than reading pages. Fine for the telemetry write path
+  and for selective queries; not a reporting engine.
+
+This list was written when the adapter had never been run from Shayveri. It
+has since run end to end against asdb on every store, and the catalog page
+ceiling that used to break a full database is gone. Everything else above
+stands: no authentication, no TLS, no fsync, and one writer at a time.
