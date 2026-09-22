@@ -3,7 +3,7 @@ package ascore.egress;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * E1 - shayveri.opencloud from application.yml. The key and universe come from the
+ * shayveri.opencloud from application.yml. The key and universe come from the
  * environment and are blank in dev, which EgressService treats as "push disabled".
  *
  * baseUrl only moves for tests. The bucket numbers sit under Open Cloud's published

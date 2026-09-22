@@ -18,7 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * D5 - the 202 must not wait on storage.
+ * The 202 must not wait on storage.
  *
  * Lives outside Module1IntegrationTest because it needs no container: the store
  * here is a stub that blocks until the test releases it, so nothing is persisted

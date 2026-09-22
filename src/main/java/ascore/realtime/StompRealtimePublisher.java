@@ -62,7 +62,7 @@ public class StompRealtimePublisher implements RealtimePublisher {
         this.alerts = alerts;
     }
 
-    // R3: alerts are kept as they go out, so the snapshot sees exactly what subscribers saw
+    // alerts are kept as they go out, so the snapshot sees exactly what subscribers saw
     @Override
     public void publish(String topic, Object payload) {
         if (topic.equals("/topic/alerts")) alerts.add(payload);

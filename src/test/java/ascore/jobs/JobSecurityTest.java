@@ -10,7 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-// T7 roles. Refused in the filter chain, so no store is touched
+// roles. Refused in the filter chain, so no store is touched
 @SpringBootTest
 @AutoConfigureMockMvc
 class JobSecurityTest {

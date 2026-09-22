@@ -6,7 +6,7 @@ import java.util.Optional;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
-// V5 - the Mongo adapter behind AuditStore
+// the Mongo adapter behind AuditStore
 @Component
 @ConditionalOnProperty(name = "shayveri.store", havingValue = "mongo", matchIfMissing = true)
 public class MongoAuditStore implements AuditStore {

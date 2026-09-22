@@ -50,8 +50,10 @@ public class EgressService {
 
 		String reason = "no attempt made";
 		for (int attempt = 0; attempt < ATTEMPTS; attempt++) {
-			if (attempt > 0) sleep(props.getBackoffBaseMs() << (attempt - 1));
 
+			if (attempt > 0) {
+				sleep(props.getBackoffBaseMs() << (attempt - 1));
+			}
 			if (!bucket.tryAcquire()) {
 				reason = "rate limited locally";
 				continue;

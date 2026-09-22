@@ -3,7 +3,7 @@ package ascore.overrides;
 import java.util.Optional;
 
 /**
- * O6 - the rule-5 seam for the hot path. Holds each place's assembled config so a poll
+ * The storage seam for the hot path. Holds each place's assembled config so a poll
  * never reaches Mongo.
  *
  * evictAll exists for global activations: every place's assembly includes the global

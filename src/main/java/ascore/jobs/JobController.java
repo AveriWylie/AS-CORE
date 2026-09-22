@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * J10 - the HTTP edge. Thin delegation; the NODE and DASH rules live in
+ * The HTTP edge. Thin delegation; the NODE and DASH rules live in
  * SecurityConfig.
  *
  * The two handlers here are scoped to this controller: an unknown job is a 404 and

@@ -11,7 +11,7 @@ told, rather than asking every few seconds. Five classes, and the module owns no
 
 ## The topics
 
-Fixed in plan.txt, so the dashboard can be written against them:
+A fixed vocabulary, so the dashboard can be written against them:
 
 ```text
     /topic/telemetry/{placeId}   snapshots as they arrive

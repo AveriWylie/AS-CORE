@@ -52,6 +52,22 @@ public class AsdbBinaryClient implements AutoCloseable {
 		return reply.affected();
 	}
 
+	/**
+	 * Writes one document, found by a field's value, whether or not it is already there.
+	 * The field must be indexed: this is the hot path, and asdb refuses to scan for it.
+	 *
+	 * Returns how many documents asdb wrote, which is one either way.
+	 */
+	public long upsert(String collection, String field, Object key, Map<String, Object> doc) {
+		AbpCodec.Reply reply = roundTrip(AbpCodec.OP_UPSERT, AbpCodec.upsertPayload(collection, field, key, doc));
+
+		if (reply.opcode() == AbpCodec.OP_ERROR) {
+			throw new AsdbClient.AsdbException("asdb rejected an upsert into " + collection + ": " + reply.error());
+		}
+
+		return reply.affected();
+	}
+
 	// Runs one ASL statement. Used for DDL and for reads; inserts should use #insert.
 	public AbpCodec.Reply execute(String statement) {
 		AbpCodec.Reply reply = roundTrip(AbpCodec.OP_EXEC, AbpCodec.execPayload(statement));

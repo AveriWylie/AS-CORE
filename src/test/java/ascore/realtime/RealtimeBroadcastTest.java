@@ -84,7 +84,7 @@ class RealtimeBroadcastTest {
 		WebSocketStompClient client = new WebSocketStompClient(new StandardWebSocketClient());
 		client.setMessageConverter(new MappingJackson2MessageConverter());
 
-		// R1 refuses a CONNECT without a DASH key
+		// StompAuthInterceptor refuses a CONNECT without a DASH key
 		StompHeaders connect = new StompHeaders();
 		connect.add("X-Api-Key", "dev-dash-key");
 

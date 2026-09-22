@@ -47,8 +47,8 @@ Production code is organized by capability. Tests mirror the production package 
 
 ## Documentation
 
-- [Documentation index](documentation/README.md)
-- [Ingress module](documentation/modules/module1/module1-overview.md)
+- [Telemetry ingress](documentation/architecture/ingress.md)
 - [ASDB adapter](documentation/architecture/asdb.md)
 - [API-key security](documentation/architecture/security.md)
-- [Requests and stored documents](documentation/modules/module1/request-vs-document.md)
+- [Realtime and the dashboard socket](documentation/architecture/realtime.md)
+- [The config package](documentation/architecture/config.md)

@@ -13,7 +13,7 @@ import net.logstash.logback.encoder.LogstashEncoder;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
-// T4. One event through the encoder logback-spring.xml uses outside dev must be one JSON object
+// one event through the encoder logback-spring.xml uses outside dev must be one JSON object
 class LogShapeTest {
 
 	@Test

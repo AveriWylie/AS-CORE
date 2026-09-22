@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 /**
- * N2 - POST /api/nodes/{id}/heartbeat body, sent every 15s by agents.
+ * POST /api/nodes/{id}/heartbeat body, sent every 15s by agents.
  *
  * currentLoad is the running job count; runningJobIds is optional and normalised
  * to an empty list.

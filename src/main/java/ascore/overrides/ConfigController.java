@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * O9 - the HTTP edge. ROBLOX polls active; everything else is DASH, set in
+ * The HTTP edge. ROBLOX polls active; everything else is DASH, set in
  * SecurityConfig. who is the caller's role in lower case, "dash" today.
  *
  * placeId is optional everywhere and means the global config when absent.

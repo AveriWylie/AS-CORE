@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import org.junit.jupiter.api.Test;
 
-// T1, T2, T3 and T5 against the in-memory store and cache; egress is a mock at its class
+// saving, rejecting, activating and rolling back, against the in-memory store and cache; egress is a mock
 class ConfigServiceTest {
 
 	private final InMemoryConfigStore store = new InMemoryConfigStore();
@@ -28,7 +28,6 @@ class ConfigServiceTest {
 
 	private int save(String placeId, Map<String, Object> values) {return service.save(new ConfigSaveRequest(placeId, "spawns", values), "dash");}
 
-	// T1
 	@Test
 	void everySaveIsANewRetrievableVersion() {
 		Map<String, Object> first = Map.of("zombieSpeed", 16, "spawnRate", 0.5);
@@ -41,7 +40,6 @@ class ConfigServiceTest {
 		assertEquals(second, store.findVersion("p1", "spawns", 2).orElseThrow().getValues());
 	}
 
-	// T2
 	@Test
 	void typoIsRejectedBeforeAnyVersionExists() {
 		ConfigRejectedException e = assertThrows(ConfigRejectedException.class, () -> save("p1", Map.of("zombeSpeed", 16)));
@@ -56,7 +54,7 @@ class ConfigServiceTest {
 		assertTrue(e.getProblems().containsKey("zombieSpeed"));
 	}
 
-	// T3, the acceptance: a rollback serves exactly the bytes v1 served the first time
+	// the acceptance: a rollback serves exactly the bytes v1 served the first time
 	@Test
 	void rollbackRestoresV1Exactly() {
 		save("p1", Map.of("zombieSpeed", 16));
@@ -85,7 +83,6 @@ class ConfigServiceTest {
 		assertNotEquals(before.etag(), service.getActive("p1").etag());
 	}
 
-	// T5
 	@Test
 	void activationPushesAndBroadcasts() {
 		save("p1", Map.of("zombieSpeed", 16));

@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-// O5 - package-private so only MongoConfigStore reaches it
+// package-private so only MongoConfigStore reaches it
 interface ConfigVersionRepository extends MongoRepository<ConfigVersion, String> {
 
 	Optional<ConfigVersion> findByPlaceIdAndNamespaceAndVersion(String placeId, String namespace, int version);

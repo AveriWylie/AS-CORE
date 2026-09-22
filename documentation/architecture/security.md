@@ -69,8 +69,8 @@ read, no SecurityContext, no filter chain. It reads the same ApiKeyProperties, s
 the filter about which secret means which role.
 
 It exists for callers that have a key but no servlet request. Today that is one: StompAuthInterceptor, on
-the STOMP side below. The plan and the Module 7 blueprint also name it as the seam for where "who" comes
-from in the audit trail, once keys go per person rather than per role, so "dash" becomes "averi".
+the STOMP side below. It is also the intended seam for where "who" in the audit trail comes from, once keys
+go per person rather than per role, so "dash" becomes "averi".
 
 The filter does not call it. Both read the same properties and so agree, but the scan is written twice, and
 pointing the filter at the resolver is a safe change whenever the filter is next touched.

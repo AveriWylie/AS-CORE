@@ -24,7 +24,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 /**
- * T1 and T6, which are about Redis itself: that LMOVE is atomic, and how a claim
+ * The two things that are about Redis itself: that LMOVE is atomic, and how a claim
  * waits. Skips without a Redis on 6379.
  *
  * Runs against logical database 15 and flushes it before each test, so it never
@@ -53,7 +53,7 @@ class RedisQueueStoreTest {
 	void emptyDatabase() {redis.getConnectionFactory().getConnection().serverCommands().flushDb();}
 
 	/**
-	 * T1, the acceptance test. One job, two nodes released at the same instant, fifty
+	 * The acceptance test. One job, two nodes released at the same instant, fifty
 	 * times. Exactly one claim may succeed each round.
 	 */
 	@Test
@@ -82,7 +82,7 @@ class RedisQueueStoreTest {
 		}
 	}
 
-	// T6. With nothing queued the claim waits; work arriving mid-wait is returned at once
+	// with nothing queued the claim waits; work arriving mid-wait is returned at once
 	@Test
 	void claimReturnsAsSoonAsWorkArrives() throws Exception {
 		CompletableFuture<Optional<String>> claim = CompletableFuture.supplyAsync(

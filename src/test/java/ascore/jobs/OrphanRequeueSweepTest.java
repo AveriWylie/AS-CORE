@@ -11,7 +11,7 @@ import ascore.nodes.InMemoryHeartbeatStore;
 import ascore.observability.InMemoryAuditStore;
 import ascore.observability.TestObservability;
 
-// T3 and T5. A node is dead here simply by never sending a heartbeat
+// requeueing a dead node's work, and leaving finished work alone. A node is dead here simply by never sending a heartbeat
 class OrphanRequeueSweepTest {
 
 	private final InMemoryJobStore jobs = new InMemoryJobStore();
@@ -30,7 +30,6 @@ class OrphanRequeueSweepTest {
 		return job;
 	}
 
-	// T3
 	@Test
 	void deadNodesJobIsRequeued() {
 		Job job = claimedBy("A");
@@ -56,7 +55,7 @@ class OrphanRequeueSweepTest {
 		assertTrue(alerts.isEmpty());
 	}
 
-	// T5. complete() acks first, so the sweep's release finds nothing in flight and leaves it DONE
+	// complete() acks first, so the sweep's release finds nothing in flight and leaves it DONE
 	@Test
 	void completedJobStaysDoneWhenTheSweepRunsAfter() {
 		Job job = claimedBy("A");

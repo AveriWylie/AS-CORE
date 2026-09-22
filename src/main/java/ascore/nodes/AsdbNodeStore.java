@@ -8,7 +8,7 @@ import java.util.Optional;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
-// N5 on asdb. save is an upsert on nodeId, which is what makes re-registering idempotent
+// NodeStore on asdb. save is an upsert on nodeId, which is what makes re-registering idempotent
 @Component
 @ConditionalOnProperty(name = "shayveri.store", havingValue = "asdb")
 public class AsdbNodeStore implements NodeStore {

@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * GET /api/audit (DASH), so the trail can be read without a Mongo shell. Not in the
- * blueprint. from and to are ISO-8601 instants and default to the last 24 hours.
+ * from and to are ISO-8601 instants and default to the last 24 hours.
  */
 @RestController
 public class AuditController {

@@ -3,7 +3,7 @@ package ascore.jobs;
 import java.util.List;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-// J5 - package-private so only MongoJobStore reaches it; Spring Data derives each query from its method name
+// package-private so only MongoJobStore reaches it; Spring Data derives each query from its method name
 interface JobRepository extends MongoRepository<Job, String> {
 
 	List<Job> findByStatusAndMapId(JobStatus status, String mapId);

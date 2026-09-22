@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * N10 - the HTTP edge. Thin delegation and no identity checks: the NODE and DASH
+ * The HTTP edge. Thin delegation and no identity checks: the NODE and DASH
  * rules live in SecurityConfig.
  *
  * An unknown node on heartbeat is a 404 thrown as ResponseStatusException, so it

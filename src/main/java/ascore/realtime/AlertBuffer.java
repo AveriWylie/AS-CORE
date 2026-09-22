@@ -8,9 +8,9 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /**
- * R3 - the last 50 alerts, newest first, for the snapshot. Fed by StompRealtimePublisher
+ * The last 50 alerts, newest first, for the snapshot. Fed by StompRealtimePublisher
  * as it sends each /topic/alerts payload. Memory only: a restart loses them, which is fine
- * for alerts, and lasting history is Module 7's audit.
+ * for alerts, and lasting history is the audit trail. See documentation/architecture/realtime.md.
  */
 @Component
 public class AlertBuffer {

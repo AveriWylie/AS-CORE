@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * N5 - the Mongo adapter behind NodeStore, the A6 pattern: it delegates to a
+ * The Mongo adapter behind NodeStore: it delegates to a
  * package-private repository and nothing above the seam sees Mongo.
  */
 @Component

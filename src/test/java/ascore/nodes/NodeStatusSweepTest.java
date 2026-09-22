@@ -8,7 +8,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * T4. The sweep publishes transitions and nothing else. A steady node publishes once
+ * The sweep publishes transitions and nothing else. A steady node publishes once
  * when it comes up and once when it dies, never on the sweeps in between.
  */
 class NodeStatusSweepTest {

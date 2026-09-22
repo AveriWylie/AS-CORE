@@ -11,7 +11,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * J5 on asdb. A job without an id is new and inserted, which assigns one; a job with
+ * JobStore on asdb. A job without an id is new and inserted, which assigns one; a job with
  * an id is overwritten in place. Only the service creates jobs, so no upsert is needed.
  */
 @Component

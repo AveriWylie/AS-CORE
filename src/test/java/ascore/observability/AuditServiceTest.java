@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-// T2 through ConfigService, and the unit half of T3
+// the audit trail through ConfigService, and the unit half of the resilience check
 class AuditServiceTest {
 
 	private ConfigService config(AuditStore audit) {
@@ -22,7 +22,6 @@ class AuditServiceTest {
 				mock(EgressService.class), (topic, payload) -> { }, new ObjectMapper(), TestObservability.audit(audit));
 	}
 
-	// T2
 	@Test
 	void activationWritesOneRecordWithBeforeAndAfter() {
 		InMemoryAuditStore audit = new InMemoryAuditStore();
@@ -42,7 +41,7 @@ class AuditServiceTest {
 		assertEquals(Map.of("version", 2), last.getAfter());
 	}
 
-	// T3, unit half: the store throws and the caller never sees it
+	// the store throws and the caller never sees it
 	@Test
 	void failingStoreNeverReachesTheCaller() {
 		AuditStore broken = new AuditStore() {

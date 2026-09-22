@@ -11,7 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * T5. The wrong role is refused in the filter chain, before the controller runs, so
+ * The wrong role is refused in the filter chain, before the controller runs, so
  * no store is touched and nothing needs Mongo or Redis.
  */
 @SpringBootTest

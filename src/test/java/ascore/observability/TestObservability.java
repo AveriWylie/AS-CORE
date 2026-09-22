@@ -4,7 +4,7 @@ import ascore.jobs.QueueStore;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.springframework.web.socket.messaging.DefaultSimpUserRegistry;
 
-// the Module 7 collaborators for tests that build services by hand
+// the metrics and audit collaborators, for tests that build services by hand
 public final class TestObservability {
 
 	private TestObservability() { }

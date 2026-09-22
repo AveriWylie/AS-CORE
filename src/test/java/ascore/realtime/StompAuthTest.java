@@ -14,7 +14,7 @@ import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
-// T1. Only a DASH key in the CONNECT frame gets a session; the handshake itself stays open
+// only a DASH key in the CONNECT frame gets a session; the handshake itself stays open
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class StompAuthTest {
 

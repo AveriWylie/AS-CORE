@@ -50,8 +50,8 @@ public final class AsdbDocumentStore<T> {
 
 	/**
 	 * Creates the collection and an index on the id and on every @Indexed field, plus any
-	 * extra fields named. Same rule as AsdbTelemetryStore: "already exists" is the normal
-	 * case after the first start, so failures are logged, not thrown.
+	 * extra fields named. The guards make each statement a no-op when the object is already
+	 * there, so a restart is silent and anything logged here is a real failure.
 	 */
 	public void ensureSchema(String... extraIndexes) {
 
@@ -60,14 +60,26 @@ public final class AsdbDocumentStore<T> {
 			return;
 		}
 
-		attempt("create " + collection + " {}");
+		attempt("create if not exists " + collection + " {}");
 		List<String> indexed = new ArrayList<>(AsdbEntityMapper.indexedFieldsOf(type));
 		indexed.add(id.getName());
 		indexed.addAll(List.of(extraIndexes));
 
 		for (String field : indexed.stream().distinct().toList()) {
-			attempt("create index on " + collection + "." + field);
+			attempt("create index if not exists on " + collection + "." + field);
 		}
+	}
+
+	/**
+	 * Declares a unique index over these fields together, so asdb refuses a second
+	 * document with the same combination instead of the caller checking first.
+	 *
+	 * Mongo's equivalent is the @CompoundIndex on the entity, which MongoConfigStore
+	 * builds at startup. Same guarantee, stated in each backend's own terms.
+	 */
+	public void uniqueConstraint(String... fields) {
+		attempt("create unique index if not exists on " + collection + "."
+				+ String.join(", " + collection + ".", fields));
 	}
 
 	/**
@@ -80,24 +92,21 @@ public final class AsdbDocumentStore<T> {
 		return entity;
 	}
 
-	// overwrites every field of the document with this entity's id, returning how many matched
-	public long replace(T entity) {
-		Map<String, Object> doc = document(entity);
-		Object key = doc.remove(id.getName());
-		String assignments = doc.entrySet().stream()
-				.map(e -> AsdbEntityMapper.backtick(e.getKey()) + " = " + AsdbEntityMapper.literal(e.getValue()))
-				.collect(Collectors.joining(", "));
-
-		return client.execute("from " + collection + " where " + eq(id.getName(), key) + " update set " + assignments).affected();
-	}
-
 	/**
-	 * Replace, or insert when nothing matched. asdb has no upsert, so this is two
-	 * statements, and synchronized so two callers in this JVM cannot both insert the same
-	 * id. Another process writing the same collection could still race it.
+	 * Writes the entity whether or not its id is already there: asdb's upsert updates the
+	 * matching document, or inserts this one when none matched.
+	 *
+	 * One request, so the server settles it. The check-then-write this replaces could not
+	 * be atomic from here, and two writers racing it both saw nothing and both inserted.
+	 *
+	 * It goes over the binary opcode rather than ASL text, so the values never become
+	 * syntax on the path every save takes.
 	 */
-	public synchronized T upsert(T entity) {
-		if (replace(entity) == 0) insert(entity);
+	public T upsert(T entity) {
+		if (read(id, entity) == null && id.getType() == String.class) write(id, entity, UUID.randomUUID().toString());
+
+		Map<String, Object> doc = document(entity);
+		client.upsert(collection, id.getName(), doc.get(id.getName()), doc);
 		return entity;
 	}
 

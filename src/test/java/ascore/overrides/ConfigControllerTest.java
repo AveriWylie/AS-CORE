@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 /**
- * T2, T4 and T6 over HTTP. The store and cache are the in-memory ones and egress is
+ * The schema, the ETag and the roles, over HTTP. The store and cache are the in-memory ones and egress is
  * mocked, so this runs without Mongo, Redis or Roblox.
  *
  * Each test uses its own placeId because the context, and so the store, is shared.
@@ -77,7 +77,6 @@ class ConfigControllerTest {
 				.andReturn().getResponse().getHeader(HttpHeaders.ETAG);
 	}
 
-	// T2
 	@Test
 	void typoIs400NamingTheKey() throws Exception {
 		save("t2", "{\"zombeSpeed\":16}")
@@ -85,7 +84,6 @@ class ConfigControllerTest {
 				.andExpect(jsonPath("$.fieldErrors.zombeSpeed").exists());
 	}
 
-	// T4
 	@Test
 	void unchangedConfigIs304AndActivationChangesTheEtag() throws Exception {
 		save("t4", "{\"zombieSpeed\":16}").andExpect(jsonPath("$.version").value(1));
@@ -106,7 +104,6 @@ class ConfigControllerTest {
 				.andExpect(content().string(containsString("20")));
 	}
 
-	// T6
 	@Test
 	void robloxCannotSave() throws Exception {
 		mockMvc.perform(put("/api/config")
@@ -116,7 +113,7 @@ class ConfigControllerTest {
 				.andExpect(status().isForbidden());
 	}
 
-	// T6, decided as default deny: the dashboard reads history, not the ROBLOX poll path
+	// default deny: the dashboard reads history, not the ROBLOX poll path
 	@Test
 	void dashCannotPollActive() throws Exception {
 		mockMvc.perform(get("/api/config/active").header("X-Api-Key", DASH)).andExpect(status().isForbidden());

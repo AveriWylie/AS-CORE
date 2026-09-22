@@ -10,8 +10,7 @@ import java.util.Map;
 public record ConfigSaveRequest(
 		String placeId,
 		@NotBlank String namespace,
-		@NotNull Map<String, Object> values
-) {
+		@NotNull Map<String, Object> values) {
 
 	// a missing or blank placeId is the global config, which every place falls back to
 	public ConfigSaveRequest {

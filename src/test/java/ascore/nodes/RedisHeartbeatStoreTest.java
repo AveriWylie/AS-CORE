@@ -12,10 +12,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 /**
- * T2 and T3, which are about real key expiry and so need a real Redis. Skips rather
+ * Writing a heartbeat and letting it expire, which needs a real Redis. Skips rather
  * than fails without one on 6379; brew install redis is enough, no Docker needed.
  *
- * The TTL is shortened to 2s here so T3 can watch a key die without waiting 45s.
+ * The TTL is shortened to 2s here so the expiry test can watch a key die without waiting 45s.
  */
 @EnabledIf("redisAvailable")
 @SpringBootTest(properties = "shayveri.nodes.heartbeat-ttl-seconds=2")
@@ -36,7 +36,6 @@ class RedisHeartbeatStoreTest {
 	@Autowired
 	private StringRedisTemplate redis;
 
-	// T2
 	@Test
 	void heartbeatWritesKeyWithTtl() {
 		String id = "t2-" + System.nanoTime();
@@ -46,7 +45,6 @@ class RedisHeartbeatStoreTest {
 		assertTrue(ttl != null && ttl > 0 && ttl <= 2, "unexpected ttl " + ttl);
 	}
 
-	// T3
 	@Test
 	void livenessExpires() throws InterruptedException {
 		String id = "t3-" + System.nanoTime();

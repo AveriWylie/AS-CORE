@@ -32,7 +32,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * T1 and the HTTP half of T3. Every store is in memory and the audit store always
+ * Metrics over HTTP, and a mutation surviving a broken audit store. Every store is in memory and the audit store always
  * throws, so each mutation here also proves a lost audit write does not fail it.
  *
  * AutoConfigureObservability is needed because Spring Boot tests leave the Prometheus
@@ -94,7 +94,7 @@ class ObservabilityHttpTest {
 	@Autowired
 	private MockMvc mockMvc;
 
-	// T1, the acceptance
+	// the acceptance
 	@Test
 	void prometheusServesOurMetrics() throws Exception {
 		mockMvc.perform(post("/api/telemetry")
@@ -115,7 +115,6 @@ class ObservabilityHttpTest {
 				.andExpect(content().string(containsString("shayveri_job_transitions_total")));
 	}
 
-	// T3, HTTP half
 	@Test
 	void configSaveSucceedsWhileAuditIsDown() throws Exception {
 		mockMvc.perform(put("/api/config")

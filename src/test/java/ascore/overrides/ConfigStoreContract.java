@@ -24,7 +24,7 @@ abstract class ConfigStoreContract {
 		store.saveVersion(new ConfigVersion(place, namespace, version, values, "dash", AT));
 	}
 
-	// T1: what was saved is what comes back
+	// what was saved is what comes back
 	@Test
 	void versionReadsBackExactly() {
 		String place = place();

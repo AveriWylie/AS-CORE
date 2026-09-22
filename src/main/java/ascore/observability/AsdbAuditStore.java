@@ -11,7 +11,7 @@ import java.util.Optional;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
-// V5 on asdb. at is stored as epoch millis, so the range is a plain integer comparison on its index
+// AuditStore on asdb. at is stored as epoch millis, so the range is a plain integer comparison on its index
 @Component
 @ConditionalOnProperty(name = "shayveri.store", havingValue = "asdb")
 public class AsdbAuditStore implements AuditStore {

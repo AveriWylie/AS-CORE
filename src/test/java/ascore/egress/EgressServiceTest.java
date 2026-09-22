@@ -27,7 +27,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 /**
- * T1 to T5. The RestClient is bound to MockRestServiceServer, so every request is
+ * Every path through a push. The RestClient is bound to MockRestServiceServer, so every request is
  * scripted and nothing leaves the machine. Backoff is zero, so retries are instant.
  */
 class EgressServiceTest {
@@ -60,7 +60,6 @@ class EgressServiceTest {
 
 	private boolean alerted() {return published.stream().anyMatch(p -> p.get("topic").equals("/topic/alerts"));}
 
-	// T1
 	@Test
 	void sendsOnlyThePointerUnder1KB() {
 		String body = client.body(7);
@@ -69,7 +68,6 @@ class EgressServiceTest {
 		assertTrue(body.length() < OpenCloudClient.MAX_BYTES);
 	}
 
-	// T2
 	@Test
 	void successIsOneRequestAndPushed() {
 		server.expect(times(1), requestTo(URL))
@@ -84,7 +82,6 @@ class EgressServiceTest {
 		assertTrue(publishedDelivery("PUSHED"));
 	}
 
-	// T3
 	@Test
 	void twoFailuresThenSuccessIsThreeRequests() {
 		server.expect(times(2), requestTo(URL)).andRespond(withServerError());
@@ -97,7 +94,7 @@ class EgressServiceTest {
 		assertFalse(alerted());
 	}
 
-	// T4, the acceptance: a bad key degrades loudly and never throws into Module 4
+	// the acceptance: a bad key degrades loudly and never throws back into the activation that called it
 	@Test
 	void badKeyDegradesWithoutThrowing() {
 		server.expect(times(3), requestTo(URL)).andRespond(withStatus(HttpStatus.UNAUTHORIZED));
@@ -109,7 +106,7 @@ class EgressServiceTest {
 		assertTrue(alerted());
 	}
 
-	// T5. The clock never moves, so the second push finds the bucket empty and never reaches the wire
+	// the clock never moves, so the second push finds the bucket empty and never reaches the wire
 	@Test
 	void emptyBucketNeverFiresEarly() {
 		server.expect(times(1), requestTo(URL)).andRespond(withSuccess());

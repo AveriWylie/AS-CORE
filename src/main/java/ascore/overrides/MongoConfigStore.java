@@ -13,7 +13,7 @@ import org.springframework.data.mongodb.core.index.IndexOperations;
 import org.springframework.data.mongodb.core.index.MongoPersistentEntityIndexResolver;
 import org.springframework.stereotype.Component;
 
-// O5 - the Mongo adapter behind ConfigStore, the A6/N5/J5 pattern
+// the Mongo adapter behind ConfigStore, the same shape as the node, job and telemetry ones
 @Component
 @ConditionalOnProperty(name = "shayveri.store", havingValue = "mongo", matchIfMissing = true)
 public class MongoConfigStore implements ConfigStore {

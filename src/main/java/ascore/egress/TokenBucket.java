@@ -3,11 +3,11 @@ package ascore.egress;
 import java.util.function.LongSupplier;
 
 /**
- * E3 - refill-on-read rate limit. Nothing ticks in the background: each tryAcquire first
+ * Refill-on-read rate limit. Nothing ticks in the background: each tryAcquire first
  * adds whatever tokens the elapsed time has earned, capped at capacity, then takes one
  * if there is one.
  *
- * The clock is passed in so T5 can move time by hand instead of sleeping.
+ * The clock is passed in so a test can move time by hand instead of sleeping.
  */
 public class TokenBucket {
 

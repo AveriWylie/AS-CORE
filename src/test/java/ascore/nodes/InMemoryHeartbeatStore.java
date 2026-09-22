@@ -8,7 +8,7 @@ import java.util.Set;
 /**
  * HeartbeatStore without Redis. Liveness is a map rather than an expiring key, so
  * a test decides when a node dies by calling expire instead of waiting out a TTL.
- * Public because Module 3's orphan sweep depends on the same interface.
+ * Public because the jobs package's orphan sweep depends on the same interface.
  */
 public class InMemoryHeartbeatStore implements HeartbeatStore {
 

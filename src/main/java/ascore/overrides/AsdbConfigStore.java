@@ -11,11 +11,11 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * O5 on asdb: config_versions and config_active, as MongoConfigStore has them.
+ * ConfigStore on asdb: config_versions and config_active, as MongoConfigStore has them.
  *
- * Mongo's unique index on (placeId, namespace, version) is what stops two saves racing
- * to the same number. asdb parses unique but does not enforce it yet, so saveVersion
- * checks and inserts under a lock instead. That holds for one AS-CORE process only.
+ * A save racing another to the same version number is refused by the database itself:
+ * both backends carry a unique index over (placeId, namespace, version), so the second
+ * insert fails rather than landing. Nothing here has to check first.
  */
 @Component
 @ConditionalOnProperty(name = "shayveri.store", havingValue = "asdb")
@@ -28,14 +28,12 @@ public class AsdbConfigStore implements ConfigStore {
 		this.versions = new AsdbDocumentStore<>(client, ConfigVersion.class);
 		this.pointers = new AsdbDocumentStore<>(client, ActivePointer.class);
 		versions.ensureSchema("placeId");
+		versions.uniqueConstraint("placeId", "namespace", "version");
 		pointers.ensureSchema();
 	}
 
 	@Override
-	public synchronized void saveVersion(ConfigVersion version) {
-		if (findVersion(version.getPlaceId(), version.getNamespace(), version.getVersion()).isPresent()) {
-			throw new IllegalStateException("version " + version.getVersion() + " of " + version.getNamespace() + " for " + version.getPlaceId() + " already exists");
-		}
+	public void saveVersion(ConfigVersion version) {
 		versions.insert(version);
 	}
 

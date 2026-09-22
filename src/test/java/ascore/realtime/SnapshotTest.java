@@ -48,7 +48,7 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 /**
- * T2 and T3 on a real server. Every store is in memory, so the snapshot and the sweep
+ * Reconnect hydration and the snapshot role, on a real server. Every store is in memory, so the snapshot and the sweep
  * run without Mongo or Redis, and a node is made DOWN by expiring its heartbeat by hand.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -132,7 +132,6 @@ class SnapshotTest {
 		return session;
 	}
 
-	// T3
 	@Test
 	void onlyDashReadsTheSnapshot() {
 		assertEquals(403, snapshotStatus("dev-node-key"));
@@ -141,7 +140,7 @@ class SnapshotTest {
 	}
 
 	/**
-	 * T2, the acceptance. The DOWN transition happens while the dashboard is disconnected,
+	 * The acceptance. The DOWN transition happens while the dashboard is disconnected,
 	 * so it misses that delta; the snapshot after reconnecting must show it, and the new
 	 * subscription must not replay it.
 	 */

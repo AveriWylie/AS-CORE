@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * J5 - the Mongo adapter behind JobStore, the A6/N5 pattern. find() picks the
+ * The Mongo adapter behind JobStore. find() picks the
  * derived query matching whichever filters are present.
  */
 @Component

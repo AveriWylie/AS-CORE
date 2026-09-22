@@ -13,7 +13,7 @@ import ascore.observability.TestObservability;
 import org.junit.jupiter.api.Test;
 
 /**
- * T2 and T4, plus the state edges JobService enforces. The executor runs inline and
+ * Capability filtering, the retry ceiling, and the state edges JobService enforces. The executor runs inline and
  * the backoff and claim timeout are zero, so a retry happens within the fail() call.
  */
 class JobServiceTest {
@@ -28,7 +28,6 @@ class JobServiceTest {
 
 	private static ClaimRequest node(String nodeId) {return new ClaimRequest(nodeId, Map.of());}
 
-	// T2
 	@Test
 	void capabilityGatesClaimableTypes() {
 		create(JobType.TEXTURE_BAKE);
@@ -38,7 +37,7 @@ class JobServiceTest {
 	}
 
 	/**
-	 * T4. maxRetries 3 means four runs: the first three failures requeue, the fourth is
+	 * maxRetries 3 means four runs: the first three failures requeue, the fourth is
 	 * terminal. attempts counts every claim, so it ends at four.
 	 */
 	@Test

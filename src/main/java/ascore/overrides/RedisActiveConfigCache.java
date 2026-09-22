@@ -8,7 +8,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * O7 - key config:active:{placeId}, holding the body and etag together as one JSON
+ * Key config:active:{placeId}, holding the body and etag together as one JSON
  * value so they can never be read out of step. No TTL: an entry is only ever replaced or
  * evicted, since an expired one would quietly send the hottest ROBLOX path to Mongo.
  */

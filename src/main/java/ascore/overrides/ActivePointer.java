@@ -4,7 +4,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 /**
- * O4's pointer document: which version is live for one placeId and namespace. The id is
+ * The pointer document: which version is live for one placeId and namespace. The id is
  * built from both, so moving the pointer is a save over the same document rather than a
  * new one, and the version rows are never touched.
  */

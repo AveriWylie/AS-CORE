@@ -9,7 +9,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
-// T1 and T6, plus the unregistered-heartbeat rule, against in-memory stores
+// registration, listing with status, and the unregistered-heartbeat rule, against in-memory stores
 class NodeServiceTest {
 
 	private final InMemoryNodeStore nodes = new InMemoryNodeStore();
@@ -21,7 +21,7 @@ class NodeServiceTest {
 	}
 
 	/**
-	 * T1. A second register with the same id is an overwrite, not a second node, and it
+	 * A second register with the same id is an overwrite, not a second node, and it
 	 * keeps the original registeredAt while moving lastRegisteredAt forward.
 	 */
 	@Test
@@ -41,7 +41,7 @@ class NodeServiceTest {
 		assertTrue(heartbeats.aliveNodeIds().isEmpty());
 	}
 
-	// T6. Registered without a heartbeat is DOWN with no load; with one, UP with its load
+	// registered without a heartbeat is DOWN with no load; with one, UP with its load
 	@Test
 	void listMergesRegistryWithLiveness() {
 		service.register(request("up"));

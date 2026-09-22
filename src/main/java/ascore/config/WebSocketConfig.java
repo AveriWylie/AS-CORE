@@ -45,7 +45,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 		registry.enableSimpleBroker("/topic");
 	}
 
-	// R1: every frame a client sends passes the interceptor before the broker sees it
+	// every frame a client sends passes the interceptor before the broker sees it
 	@Override
 	public void configureClientInboundChannel(ChannelRegistration registration) {
 		registration.interceptors(auth);

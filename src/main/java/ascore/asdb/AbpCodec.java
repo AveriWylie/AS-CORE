@@ -41,6 +41,7 @@ final class AbpCodec {
 	// requests
 	static final byte OP_EXEC = 0x01;
 	static final byte OP_INSERT = 0x02;
+	static final byte OP_UPSERT = 0x05;
 	static final byte OP_PING = 0x03;
 	static final byte OP_CLOSE = 0x04;
 	// responses
@@ -224,6 +225,21 @@ final class AbpCodec {
 		for (Map<String, Object> doc : docs) {
 			putDocumentBody(out, doc);
 		}
+		return out.toByteArray();
+	}
+
+	/**
+	 * An OP_UPSERT payload: collection, the key field, its value, then the document.
+	 *
+	 * The keyed write, binary for the same reason the insert is: no value becomes ASL
+	 * text, so nothing has to be escaped on the path every save takes.
+	 */
+	static byte[] upsertPayload(String collection, String field, Object key, Map<String, Object> doc) {
+		ByteArrayOutputStream out = new ByteArrayOutputStream(256);
+		putString(out, collection);
+		putString(out, field);
+		putValue(out, key);
+		putDocumentBody(out, doc);
 		return out.toByteArray();
 	}
 

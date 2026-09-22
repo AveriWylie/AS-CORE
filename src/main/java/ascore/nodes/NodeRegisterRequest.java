@@ -6,10 +6,10 @@ import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 
 /**
- * N1 - POST /api/nodes/register body.
+ * POST /api/nodes/register body.
  *
  * capabilities is optional and normalised to an empty map, so the service never
- * null-checks it (same normalisation as A1).
+ * null-checks it (the same normalisation the telemetry requests do).
  */
 public record NodeRegisterRequest(
 		@NotBlank String nodeId,

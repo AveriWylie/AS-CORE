@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 
 /**
- * J2 - POST /api/jobs body, sent by the dashboard.
+ * POST /api/jobs body, sent by the dashboard.
  *
  * type is the enum, so an unknown value fails in Jackson and reaches the client as
  * a 400. priority defaults to 0, payload to an empty map, maxRetries to 3.

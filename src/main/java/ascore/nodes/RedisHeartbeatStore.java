@@ -34,7 +34,7 @@ public class RedisHeartbeatStore implements HeartbeatStore {
 	private final StringRedisTemplate redis;
 	private final Duration ttl;
 
-	// the TTL is a property so T3 can shorten it; 45s is the production value
+	// the TTL is a property so a test can shorten it; 45s is the production value
 	public RedisHeartbeatStore(StringRedisTemplate redis, @Value("${shayveri.nodes.heartbeat-ttl-seconds:45}") long ttlSeconds) {
 		this.redis = redis;
 		this.ttl = Duration.ofSeconds(ttlSeconds);

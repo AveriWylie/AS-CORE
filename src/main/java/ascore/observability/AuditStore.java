@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-// V4 - the rule-5 seam for the audit trail
+// the storage seam for the audit trail
 public interface AuditStore {
 
 	void record(AuditRecord record);
