@@ -7,7 +7,7 @@ they live in different places and have different lifetimes.
 scripts/                    operator tooling and build-time generators, run by hand
   ascore_cli.py               drives the AS-CORE API for black-box testing
   fake-roblox.sh              a curl loop posing as a game server
-  roblox-studio/              Luau pasted into Studio's command bar, git-ignored
+  roblox-studio/              Luau pasted into Studio's command bar, one file per piece
 
 the game repo               game code: runs on every server, every session
   portals, queue, config client, telemetry client
@@ -20,8 +20,8 @@ Studio's command bar, against the open place. Their output is geometry saved int
 sealed hub shell, a lighting pass, a tree scatter. Re-running one rebuilds its output. Nothing about them
 ships.
 
-They are git-ignored for now because they are scratch: the numbers change every time the hub is walked.
-Once the hub settles, the ones worth keeping become committed tooling.
+They are committed because they are the record of how the hub was built and are worth re-running against a
+fresh place. Their OUTPUT is not: that lives in the place file, which git never sees.
 
 **Game code** is the opposite in every respect. It runs on the server or the client while people play, it
 is synced by Rojo from the game repo, and it is version controlled. The portal queue and the teleport are

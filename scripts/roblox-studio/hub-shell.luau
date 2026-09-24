@@ -24,7 +24,7 @@ end
 box("Floor",   Vector3.new(W, 1, D),     Vector3.new(0, 0, 0))
 box("Ceiling", Vector3.new(W, 1, D),     Vector3.new(0, H, 0))
 box("WallN",   Vector3.new(W, H, T),     Vector3.new(0, H/2, -D/2))
-box("WallS", Vector3.new(W, H, T), Vector3.new(0, H/2, D/2))
+box("WallS",   Vector3.new(W, H, T),     Vector3.new(0, H/2, D/2))
 box("WallE",   Vector3.new(T, H, D),     Vector3.new( W/2, H/2, 0))
 box("WallW",   Vector3.new(T, H, D),     Vector3.new(-W/2, H/2, 0))
 

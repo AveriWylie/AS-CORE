@@ -38,26 +38,52 @@ import java.util.Map;
 final class AbpCodec {
 
 	private AbpCodec() { }
-	// requests
-	static final byte OP_EXEC = 0x01;
-	static final byte OP_INSERT = 0x02;
-	static final byte OP_UPSERT = 0x05;
-	static final byte OP_PING = 0x03;
-	static final byte OP_CLOSE = 0x04;
-	// responses
-	static final byte OP_AFFECTED = (byte) 0x81;
-	static final byte OP_DOCUMENTS = (byte) 0x82;
-	static final byte OP_ERROR = (byte) 0x83;
-	static final byte OP_PONG = (byte) 0x84;
+
+	/**
+	 * The opcodes, as a type rather than as loose bytes. A frame's first byte is the
+	 * only place the number is needed, so it is decoded on read and encoded on write
+	 * and nothing in between handles a raw byte.
+	 *
+	 * Mirrors Op in asdb's src/wire.rs; the numbers are the contract between them.
+	 */
+	enum Op {
+		// requests
+		EXEC(1), INSERT(2), PING(3), CLOSE(4), UPSERT(5),
+		// responses
+		AFFECTED(6), DOCUMENTS(7), ERROR(8), PONG(9);
+
+		final byte code;
+
+		Op(int code) {this.code = (byte) code;}
+
+		private static final Op[] BY_CODE = new Op[16];
+
+		static {
+			for (Op op : values()) BY_CODE[op.code] = op;
+		}
+
+		/**
+		 * The opcode a frame carries. An unrecognised one is a real case, not a bug:
+		 * a mismatched build on either side, or a desynchronised stream. It fails
+		 * here rather than being carried on as a number nothing matches.
+		 */
+		static Op of(byte code) {
+			Op op = code >= 0 && code < BY_CODE.length ? BY_CODE[code] : null;
+			if (op == null) {
+				throw new AsdbClient.AsdbException("asdb sent an unknown opcode: " + code);
+			}
+			return op;
+		}
+	}
 	// value tags
-	static final byte TAG_NULL = 0x00;
-	static final byte TAG_FALSE = 0x01;
-	static final byte TAG_TRUE = 0x02;
-	static final byte TAG_INT = 0x03;
-	static final byte TAG_FLOAT = 0x04;
-	static final byte TAG_STRING = 0x05;
-	static final byte TAG_ARRAY = 0x06;
-	static final byte TAG_DOCUMENT = 0x07;
+	static final byte TAG_NULL = 0;
+	static final byte TAG_FALSE = 1;
+	static final byte TAG_TRUE = 2;
+	static final byte TAG_INT = 3;
+	static final byte TAG_FLOAT = 4;
+	static final byte TAG_STRING = 5;
+	static final byte TAG_ARRAY = 6;
+	static final byte TAG_DOCUMENT = 7;
 	static final int MAX_FRAME = 64 * 1024 * 1024;
 
 	/* ---------- writing ---------- */
@@ -205,14 +231,14 @@ final class AbpCodec {
 	}
 
 	// A complete frame: length, opcode, payload.
-	static byte[] frame(byte opcode, byte[] payload) {
+	static byte[] frame(Op opcode, byte[] payload) {
 		byte[] out = new byte[payload.length + 5];
 		int len = payload.length + 1;
 		out[0] = (byte) len;
 		out[1] = (byte) (len >>> 8);
 		out[2] = (byte) (len >>> 16);
 		out[3] = (byte) (len >>> 24);
-		out[4] = opcode;
+		out[4] = opcode.code;
 		System.arraycopy(payload, 0, out, 5, payload.length);
 		return out;
 	}
@@ -253,7 +279,7 @@ final class AbpCodec {
 	/* ---------- reading ---------- */
 
 	// A decoded reply frame.
-	record Reply(byte opcode, byte[] payload) {
+	record Reply(Op opcode, byte[] payload) {
 		long affected() {
 			long n = 0;
 			for (int i = 7; i >= 0; i--) {
@@ -295,7 +321,7 @@ final class AbpCodec {
 		in.readFully(buf);
 		byte[] payload = new byte[len - 1];
 		System.arraycopy(buf, 1, payload, 0, len - 1);
-		return new Reply(buf[0], payload);
+		return new Reply(Op.of(buf[0]), payload);
 	}
 
 	// position in a payload. Package-private so tests can decode fixtures

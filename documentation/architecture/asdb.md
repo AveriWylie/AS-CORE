@@ -264,23 +264,31 @@ Each store has a contract test (NodeStoreContract, JobStoreContract, ConfigStore
 AuditStoreContract) run once against asdb and once against Mongo. The asdb runs use port 7071 unless
 ASDB_TEST_ABP_PORT says otherwise, so they can point at a scratch server.
 
-## What the adapters work around, which is asdb's backlog
+## What the adapters used to work around, and what is left
 
-Each of these is handled on the Java side today and would be better as a feature in asdb.
+Most of this list has moved into asdb, and each item that moved deleted Java that existed only to stand in
+for it.
 
-**No upsert.** Saving a node or moving a config pointer is an update, then an insert if nothing matched. The
-method is synchronized, so one AS-CORE process cannot insert the same id twice, but two processes could.
-A native upsert would make it one statement.
+**Upsert, done.** Saving a node or moving a config pointer was an update, then an insert if nothing matched,
+under a lock that only held within one process. asdb now has an upsert stage and a binary opcode for the
+keyed case, so it is one statement the server settles.
 
-**unique is parsed, not enforced.** Mongo's unique index on (placeId, namespace, version) is what stops two
-config saves landing on the same version. AsdbConfigStore checks and inserts under a lock instead, which
-again only holds within one process.
+**Unique, done.** `create unique index` enforces on insert, and a composite index enforces over a
+combination, which is what the config version constraint needs. AsdbConfigStore declares
+(placeId, namespace, version) and inserts; the check-then-insert is gone.
 
-**No generated ids.** Telemetry leaves a null id out. These stores read ids back, so a null String id is filled
-with a UUID before insert.
+**Guarded DDL, done.** `create if not exists` means startup schema statements are silent when the objects
+are already there, instead of failing and being swallowed.
 
-**No binary update.** Inserts travel as bytes, but an overwrite is ASL text, so every value in it passes
-through the escaper. An OP_UPDATE would remove that.
+**Binary update, done for the keyed case.** OP_UPSERT carries the collection, key field, key value and
+document as bytes, so the write every save takes never becomes ASL text. Reads and general updates still go
+through OP_EXEC as text, escaped by AsdbEntityMapper.
+
+**No generated ids, still open.** Telemetry leaves a null id out. These stores read ids back, so a null
+String id is filled with a UUID before insert. A server-side id would also give insertion-ordered keys.
+
+**One writer at a time, still open.** Every statement serialises behind one mutex, and reads take it too.
+That is the throughput ceiling, and it needs latching inside the buffer pool rather than a lock swap.
 
 ## Why Redis stays
 

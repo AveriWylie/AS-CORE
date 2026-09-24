@@ -43,9 +43,9 @@ public class AsdbBinaryClient implements AutoCloseable {
 	// Inserts documents into a collection. Returns how many asdb reported.
 	public long insert(String collection, List<? extends Map<String, Object>> documents) {
 		if (documents.isEmpty()) return 0;
-		AbpCodec.Reply reply = roundTrip(AbpCodec.OP_INSERT, AbpCodec.insertPayload(collection, documents));
+		AbpCodec.Reply reply = roundTrip(AbpCodec.Op.INSERT, AbpCodec.insertPayload(collection, documents));
 
-		if (reply.opcode() == AbpCodec.OP_ERROR) {
+		if (reply.opcode() == AbpCodec.Op.ERROR) {
 			throw new AsdbClient.AsdbException("asdb rejected an insert into " + collection + ": " + reply.error());
 		}
 
@@ -59,9 +59,9 @@ public class AsdbBinaryClient implements AutoCloseable {
 	 * Returns how many documents asdb wrote, which is one either way.
 	 */
 	public long upsert(String collection, String field, Object key, Map<String, Object> doc) {
-		AbpCodec.Reply reply = roundTrip(AbpCodec.OP_UPSERT, AbpCodec.upsertPayload(collection, field, key, doc));
+		AbpCodec.Reply reply = roundTrip(AbpCodec.Op.UPSERT, AbpCodec.upsertPayload(collection, field, key, doc));
 
-		if (reply.opcode() == AbpCodec.OP_ERROR) {
+		if (reply.opcode() == AbpCodec.Op.ERROR) {
 			throw new AsdbClient.AsdbException("asdb rejected an upsert into " + collection + ": " + reply.error());
 		}
 
@@ -70,9 +70,9 @@ public class AsdbBinaryClient implements AutoCloseable {
 
 	// Runs one ASL statement. Used for DDL and for reads; inserts should use #insert.
 	public AbpCodec.Reply execute(String statement) {
-		AbpCodec.Reply reply = roundTrip(AbpCodec.OP_EXEC, AbpCodec.execPayload(statement));
+		AbpCodec.Reply reply = roundTrip(AbpCodec.Op.EXEC, AbpCodec.execPayload(statement));
 
-		if (reply.opcode() == AbpCodec.OP_ERROR) {
+		if (reply.opcode() == AbpCodec.Op.ERROR) {
 			throw new AsdbClient.AsdbException("asdb rejected: " + reply.error() + "  (statement: " + statement + ")");
 		}
 
@@ -97,7 +97,7 @@ public class AsdbBinaryClient implements AutoCloseable {
 	// True when a connection can be made and the server answers a ping. Never throws.
 	public boolean isHealthy() {
 		try {
-			return roundTrip(AbpCodec.OP_PING, new byte[0]).opcode() == AbpCodec.OP_PONG;
+			return roundTrip(AbpCodec.Op.PING, new byte[0]).opcode() == AbpCodec.Op.PONG;
 		} catch (RuntimeException e) {
 			return false;
 		}
@@ -111,7 +111,7 @@ public class AsdbBinaryClient implements AutoCloseable {
 	position is unknown and reusing it would misalign every later frame on that
 	socket. Sockets are cheap; a desynchronised protocol stream is not.
 	*/
-	private AbpCodec.Reply roundTrip(byte opcode, byte[] payload) {
+	private AbpCodec.Reply roundTrip(AbpCodec.Op opcode, byte[] payload) {
 		try {
 			return attempt(opcode, payload, false);
 		} catch (IOException first) {
@@ -126,7 +126,7 @@ public class AsdbBinaryClient implements AutoCloseable {
 		}
 	}
 
-	private AbpCodec.Reply attempt(byte opcode, byte[] payload, boolean forceFresh) throws IOException {
+	private AbpCodec.Reply attempt(AbpCodec.Op opcode, byte[] payload, boolean forceFresh) throws IOException {
 		Conn conn = forceFresh ? connect() : borrow();
 
 		try {

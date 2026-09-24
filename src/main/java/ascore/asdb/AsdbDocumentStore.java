@@ -21,9 +21,10 @@ import org.springframework.objenesis.ObjenesisStd;
  * of these, so mapping and escaping live here once. See
  * documentation/architecture/asdb.md, "The document store".
  *
- * WRITES go over the binary protocol where they can: an insert sends the document as
- * bytes and nothing is escaped. An update has no binary opcode yet, so it is ASL text
- * built through AsdbEntityMapper.literal, the same injection boundary the text path uses.
+ * WRITES are binary: an insert sends the document as bytes, and an upsert sends the
+ * key and the document as bytes, so nothing on the path a save takes is ever escaped
+ * or parsed as syntax. Reads are ASL text through OP_EXEC, built with eq, in, atLeast
+ * and atMost, which escape their values through AsdbEntityMapper.literal.
  *
  * READS come back as maps and are turned into the entity by field type: epoch millis
  * back to Instant, strings back to enums, and whole numbers narrowed to Integer where

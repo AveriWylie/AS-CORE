@@ -194,8 +194,8 @@ class AbpCodecTest {
 	@Test
 	@DisplayName("a frame carries its own length, excluding the length field")
 	void frameHeader() {
-		byte[] frame = AbpCodec.frame(AbpCodec.OP_PING, new byte[0]);
-		assertArrayEquals(new byte[] {1, 0, 0, 0, AbpCodec.OP_PING}, frame);
+		byte[] frame = AbpCodec.frame(AbpCodec.Op.PING, new byte[0]);
+		assertArrayEquals(new byte[] {1, 0, 0, 0, AbpCodec.Op.PING.code}, frame);
 	}
 
 	@Test
